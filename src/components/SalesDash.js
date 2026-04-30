@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient'
 import Layout, {
   PageHeader, MetricsGrid, MetricCard, Panel, TwoCol,
   FieldLabel, Input, PrimaryBtn, ErrMsg, OkMsg,
-  ListItem, StatusPill, EmptyState,
+  EmptyState,
 } from './Layout'
 
 const STATUS_OPTIONS = ['New','Contacted','Demo Scheduled','Enrolled','Lost']
