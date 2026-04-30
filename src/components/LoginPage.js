@@ -85,11 +85,6 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  const inputStyle = (focused) => ({
-    ...S.input,
-    borderColor: focused ? '#1e90ff' : 'rgba(255,255,255,0.1)',
-  })
-
   return (
     <div style={S.bg}>
       <div style={S.card}>

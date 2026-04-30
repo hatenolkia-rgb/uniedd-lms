@@ -9,7 +9,7 @@ export default function StudentDash({ profile }) {
   const [enrollments, setEnrollments] = useState([])
   const [loading,     setLoading]     = useState(true)
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadData() {
     setLoading(true)

@@ -13,12 +13,12 @@ export default function TeacherDash({ profile }) {
   const [time,     setTime]     = useState('')
   const [duration, setDuration] = useState('1h')
   const [batch,    setBatch]    = useState('')
-  const [isDemo,   setIsDemo]   = useState(false)
+  
   const [saving,   setSaving]   = useState(false)
   const [err,      setErr]      = useState('')
   const [ok,       setOk]       = useState('')
 
-  useEffect(() => { loadClasses() }, [])
+  useEffect(() => { loadClasses() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadClasses() {
     setLoading(true)
