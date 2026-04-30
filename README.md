@@ -1,104 +1,94 @@
-# Uniedd LMS — Setup Guide
+# UniEDD LMS — Complete Setup Guide
 
-Your Supabase project is already wired in. Just follow 4 steps.
+## Files in this repo
 
----
-
-## Step 1 — Run the Database Schema
-
-1. Go to https://supabase.com → your project → **SQL Editor**
-2. Click **New Query**
-3. Open `SUPABASE_SCHEMA.sql` from this folder
-4. Copy everything → paste into SQL Editor → click **Run**
-
-You'll see: "Success. No rows returned" — that means all 10 tables are created. ✅
-
----
-
-## Step 2 — Enable Email OTP in Supabase
-
-1. Supabase Dashboard → **Authentication** → **Settings**
-2. Under **Email** make sure "Enable Email Confirmations" is ON
-3. Optionally set your custom SMTP (Gmail, SendGrid etc.) for branded emails
-   - If you don't set SMTP, Supabase sends emails from their default domain (works fine for testing)
-
-To set custom SMTP (recommended for production):
-- Supabase → Authentication → Settings → SMTP Settings
-- Enter your Gmail / SendGrid / Mailgun credentials
-
----
-
-## Step 3 — Install & Run Locally
-
-```bash
-# Install dependencies (only needed once)
-npm install
-
-# Start the app
-npm start
+```
+├── public/
+│   └── index.html              ← HTML shell (don't edit)
+├── src/
+│   ├── index.js                ← React entry (don't edit)
+│   ├── index.css               ← Global styles
+│   ├── App.js                  ← Auth + role routing
+│   ├── supabaseClient.js       ← Supabase connection
+│   └── components/
+│       ├── LoginPage.js        ← Login / forgot password / register
+│       ├── Layout.js           ← Shared nav + UI components
+│       ├── AdminDash.js        ← Admin dashboard
+│       ├── TeacherDash.js      ← Teacher dashboard
+│       ├── StudentDash.js      ← Student dashboard
+│       └── SalesDash.js        ← Sales CRM
+├── SUPABASE_SCHEMA.sql         ← Paste this in Supabase SQL Editor
+├── .env.example                ← Copy to .env, add your anon key
+├── package.json
+└── .gitignore
 ```
 
-Opens at: http://localhost:3000
+---
 
-**First time:** Select **Admin** role → Create Account → check email for confirmation → sign in.
-Then go to Admin → Users to set roles for other users.
+## STEP 1 — Run the Database Schema in Supabase
+
+1. Go to https://supabase.com → open your project
+2. Click **SQL Editor** in the left sidebar
+3. Click **New Query**
+4. Open `SUPABASE_SCHEMA.sql` from this folder
+5. Copy ALL the content → paste it → click **Run**
+
+You'll see: `Success. No rows returned` ✅
 
 ---
 
-## Step 4 — Deploy Live on Vercel (Free, No Laptop After This)
+## STEP 2 — Get your Supabase Anon Key
 
-### Option A: GitHub + Vercel (Recommended)
-
-1. Create account at https://github.com
-2. New repository → name it `uniedd-lms`
-3. Upload all files from this folder to GitHub
-
-4. Go to https://vercel.com → Sign up with GitHub
-5. New Project → Import `uniedd-lms` → Deploy
-
-Your app is LIVE instantly at: `https://uniedd-lms.vercel.app`
+1. Supabase Dashboard → **Settings** → **API**
+2. Copy the **"anon public"** key (starts with `eyJ...`)
 
 ---
 
-## Step 5 — Connect Your Domain
+## STEP 3 — Add the key to Vercel
 
-1. In Vercel → your project → **Settings → Domains**
-2. Type your domain e.g. `lms.uniedd.com` → Add
-3. Vercel shows you DNS records to add
+1. Go to https://vercel.com → your project → **Settings** → **Environment Variables**
+2. Add new variable:
+   - **Name:** `REACT_APP_SUPABASE_ANON_KEY`
+   - **Value:** paste your anon key
+   - **Environment:** Production + Preview + Development
+3. Click **Save**
+4. Go to **Deployments** → click the three dots on latest → **Redeploy**
 
-4. Go to your domain registrar (GoDaddy / Namecheap / Google Domains)
-5. DNS Settings → Add record:
-   - Type: `CNAME`
-   - Name: `lms` (or `app`)
-   - Value: `cname.vercel-dns.com`
-
-6. Wait 5–15 minutes → your LMS is live at `https://lms.uniedd.com` with free SSL ✅
+Your app is now live at `https://your-project.vercel.app` ✅
 
 ---
 
-## What's Connected
+## STEP 4 — First Login (Admin)
 
-| Feature | Status |
-|---------|--------|
-| Supabase URL | https://mgpvfkuzurhzysorkbvh.supabase.co |
-| Real-time sync | ✅ All tables |
-| Email + OTP login | ✅ Built-in |
-| File uploads | ✅ Supabase Storage |
-| Role-based access | ✅ 4 roles |
-| Chat (real-time) | ✅ Live messages |
-| Calendar | ✅ Shared across roles |
+1. Open your app URL
+2. Click **"Create a student account"**
+3. Sign up with your email
+4. Check email → click confirmation link
+5. Sign in → you'll land on the **Student** dashboard
 
----
+**To make yourself Admin:**
+- Go to Supabase → **Table Editor** → `profiles` table
+- Find your row → click it → change `role` from `student` to `admin`
+- Sign out and sign in again → you'll see the Admin dashboard
 
-## Roles & First Login
-
-1. **Admin** — Register first, can manage all users and set their roles
-2. **Teacher** — Register, then admin sets role to "teacher"
-3. **Sales** — Register, then admin sets role to "sales"
-4. **Student** — Register (default role is student)
+After that, you can change other users' roles directly from the Admin dashboard.
 
 ---
 
-## Support
+## STEP 5 — How roles work
 
-Your Supabase project: https://supabase.com/dashboard/project/mgpvfkuzurhzysorkbvh
+| Role | What they see | How to assign |
+|------|--------------|---------------|
+| **Admin** | Everything + user management | Set manually in Supabase first time |
+| **Teacher** | Their classes, schedule Zoom | Admin sets role from dashboard |
+| **Sales** | Leads CRM, add new leads | Admin sets role from dashboard |
+| **Student** | Their classes, Zoom links | Default role on signup |
+
+Login page shows **no role selector** — the system auto-detects role from credentials.
+
+---
+
+## Supabase Project
+
+URL: `https://mgpvfkuzurhzysorkbvh.supabase.co`
+Dashboard: `https://supabase.com/dashboard/project/mgpvfkuzurhzysorkbvh`
