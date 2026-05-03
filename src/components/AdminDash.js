@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import Calendar from './Calendar'
+import Resources from './Resources'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Row, Pill, Empty } from './Layout'
 
 export default function AdminDash({ profile }) {
@@ -96,6 +97,7 @@ export default function AdminDash({ profile }) {
           </div>}
       </Panel>
     <Calendar profile={profile} />
+    <Resources profile={profile} />
     </Layout>
   )
 }

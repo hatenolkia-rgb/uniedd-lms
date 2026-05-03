@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import Calendar from './Calendar'
+import Resources from './Resources'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Lbl, Inp, Btn, Err, Ok, Empty } from './Layout'
 
 const STATUSES = ['New','Contacted','Demo Scheduled','Enrolled','Lost']
@@ -99,6 +100,7 @@ export default function SalesDash({ profile }) {
         </Panel>
       </TwoCol>
     <Calendar profile={profile} />
+    <Resources profile={profile} />
     </Layout>
   )
 }

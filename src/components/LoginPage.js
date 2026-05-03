@@ -107,7 +107,7 @@ export default function LoginPage() {
             <div style={css.div}><div style={css.dline}/><span style={css.dtxt}>new to uniedd?</span><div style={css.dline}/></div>
             <div style={css.reg}>
               <button type="button" style={{ ...css.link, fontSize:'13px' }} onClick={() => go('register')}>
-                Create a student account
+                Create Account
               </button>
             </div>
           </form>
@@ -141,7 +141,7 @@ export default function LoginPage() {
             {err && <div style={css.err}>{err}</div>}
             {ok  && <div style={css.ok}>{ok}</div>}
             <button style={{ ...css.btn, opacity: busy ? 0.6 : 1 }} disabled={busy}>
-              {busy ? 'Creating...' : 'Create Student Account'}
+              {busy ? 'Creating...' : 'Create Account'}
             </button>
           </form>
         )}

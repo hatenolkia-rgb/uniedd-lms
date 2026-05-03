@@ -13,6 +13,11 @@ export default function Layout({ profile, pageTitle, children }) {
   const initials = (profile.full_name || profile.email || 'U')
     .split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()
 
+  function scrollToCalendar() {
+    const el = document.getElementById('uniedd-calendar')
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <div style={{ minHeight:'100vh', background:'#0c1118' }}>
       <nav style={{
@@ -38,6 +43,11 @@ export default function Layout({ profile, pageTitle, children }) {
             fontSize:'12px', fontWeight:800, color:'#fff' }}>
             {initials}
           </div>
+          <button onClick={scrollToCalendar} style={{
+            fontSize:'12px', color:'rgba(255,255,255,0.5)', background:'rgba(30,144,255,0.1)',
+            border:'0.5px solid rgba(30,144,255,0.2)', borderRadius:'6px',
+            padding:'5px 11px', cursor:'pointer', fontFamily:'inherit',
+          }}>📅 Calendar</button>
           <button onClick={() => supabase.auth.signOut()} style={{
             fontSize:'12px', color:'rgba(255,255,255,0.4)', background:'none',
             border:'0.5px solid rgba(255,255,255,0.1)', borderRadius:'6px',

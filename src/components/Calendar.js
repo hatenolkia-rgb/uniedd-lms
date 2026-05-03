@@ -93,7 +93,7 @@ export default function Calendar({ profile }) {
   const todayDay = now.getFullYear()===year && now.getMonth()===month ? now.getDate() : null
 
   return (
-    <div style={{ background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.07)', borderRadius:'14px', padding:'1rem', marginTop:'14px' }}>
+    <div id="uniedd-calendar" style={{ background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.07)', borderRadius:'14px', padding:'1rem', marginTop:'14px' }}>
 
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px' }}>
