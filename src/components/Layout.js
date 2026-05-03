@@ -48,6 +48,16 @@ export default function Layout({ profile, pageTitle, children }) {
             border:'0.5px solid rgba(30,144,255,0.2)', borderRadius:'6px',
             padding:'5px 11px', cursor:'pointer', fontFamily:'inherit',
           }}>📅 Calendar</button>
+          <button onClick={() => { const el=document.getElementById('uniedd-resources'); if(el) el.scrollIntoView({behavior:'smooth'}) }} style={{
+            fontSize:'12px', color:'rgba(255,255,255,0.5)', background:'rgba(16,185,129,0.1)',
+            border:'0.5px solid rgba(16,185,129,0.2)', borderRadius:'6px',
+            padding:'5px 11px', cursor:'pointer', fontFamily:'inherit',
+          }}>📚 Resources</button>
+          <button onClick={() => window.open('mailto:support@uniedd.com','_blank')} style={{
+            fontSize:'12px', color:'rgba(255,255,255,0.5)', background:'rgba(139,92,246,0.1)',
+            border:'0.5px solid rgba(139,92,246,0.2)', borderRadius:'6px',
+            padding:'5px 11px', cursor:'pointer', fontFamily:'inherit',
+          }}>💬 Support</button>
           <button onClick={() => supabase.auth.signOut()} style={{
             fontSize:'12px', color:'rgba(255,255,255,0.4)', background:'none',
             border:'0.5px solid rgba(255,255,255,0.1)', borderRadius:'6px',

@@ -61,10 +61,24 @@ export default function SalesDash({ profile }) {
       <PageHeader title="Sales Pipeline" subtitle="All leads auto-assigned a Student ID on entry." />
 
       <Grid4>
-        <MetricCard icon="📋" label="Total Leads"    value={leads.length} />
-        <MetricCard icon="🆕" label="This Week"      value={week.length}  />
-        <MetricCard icon="▶"  label="Demo Scheduled" value={leads.filter(l=>l.status==='Demo Scheduled').length} />
-        <MetricCard icon="👤" label="Enrolled"       value={leads.filter(l=>l.status==='Enrolled').length} />
+        <MetricCard icon="📋" label="Total Leads" value={leads.length} />
+        <MetricCard icon="🆕" label="This Week"   value={week.length}  />
+        <div onClick={() => { const el=document.getElementById('uniedd-calendar'); if(el) el.scrollIntoView({behavior:'smooth'}) }}
+          style={{ background:'rgba(30,144,255,0.08)', border:'1px solid rgba(30,144,255,0.2)', borderRadius:'14px', padding:'14px', cursor:'pointer', transition:'all 0.2s' }}
+          onMouseOver={e=>e.currentTarget.style.background='rgba(30,144,255,0.15)'}
+          onMouseOut={e=>e.currentTarget.style.background='rgba(30,144,255,0.08)'}>
+          <div style={{ fontSize:'18px', marginBottom:'8px' }}>📅</div>
+          <div style={{ fontSize:'10px', fontWeight:700, color:'rgba(255,255,255,0.4)', letterSpacing:'0.1em', textTransform:'uppercase' }}>Calendar</div>
+          <div style={{ fontSize:'18px', fontWeight:800, color:'#5aabff', marginTop:'3px' }}>View</div>
+        </div>
+        <div onClick={() => { const el=document.getElementById('uniedd-resources'); if(el) el.scrollIntoView({behavior:'smooth'}) }}
+          style={{ background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:'14px', padding:'14px', cursor:'pointer', transition:'all 0.2s' }}
+          onMouseOver={e=>e.currentTarget.style.background='rgba(16,185,129,0.15)'}
+          onMouseOut={e=>e.currentTarget.style.background='rgba(16,185,129,0.08)'}>
+          <div style={{ fontSize:'18px', marginBottom:'8px' }}>📚</div>
+          <div style={{ fontSize:'10px', fontWeight:700, color:'rgba(255,255,255,0.4)', letterSpacing:'0.1em', textTransform:'uppercase' }}>Resources</div>
+          <div style={{ fontSize:'18px', fontWeight:800, color:'#34d399', marginTop:'3px' }}>View all</div>
+        </div>
       </Grid4>
 
       <TwoCol>

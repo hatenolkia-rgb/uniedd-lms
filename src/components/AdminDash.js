@@ -51,10 +51,24 @@ export default function AdminDash({ profile }) {
       <PageHeader title="Platform Overview" subtitle="Live metrics — real Supabase data." />
 
       <Grid4>
-        <MetricCard icon="👥" label="Total Users"    value={stats.users}    />
-        <MetricCard icon="🎓" label="Students"       value={stats.students}  />
-        <MetricCard icon="📅" label="Classes"        value={stats.classes}   />
-        <MetricCard icon="📋" label="Open Leads"     value={stats.leads}     />
+        <MetricCard icon="👥" label="Total Users" value={stats.users}   />
+        <MetricCard icon="🎓" label="Students"    value={stats.students} />
+        <div onClick={() => { const el=document.getElementById('uniedd-calendar'); if(el) el.scrollIntoView({behavior:'smooth'}) }}
+          style={{ background:'rgba(30,144,255,0.08)', border:'1px solid rgba(30,144,255,0.2)', borderRadius:'14px', padding:'14px', cursor:'pointer', transition:'all 0.2s' }}
+          onMouseOver={e=>e.currentTarget.style.background='rgba(30,144,255,0.15)'}
+          onMouseOut={e=>e.currentTarget.style.background='rgba(30,144,255,0.08)'}>
+          <div style={{ fontSize:'18px', marginBottom:'8px' }}>📅</div>
+          <div style={{ fontSize:'10px', fontWeight:700, color:'rgba(255,255,255,0.4)', letterSpacing:'0.1em', textTransform:'uppercase' }}>Calendar</div>
+          <div style={{ fontSize:'18px', fontWeight:800, color:'#5aabff', marginTop:'3px' }}>{stats.classes} classes</div>
+        </div>
+        <div onClick={() => { const el=document.getElementById('uniedd-resources'); if(el) el.scrollIntoView({behavior:'smooth'}) }}
+          style={{ background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:'14px', padding:'14px', cursor:'pointer', transition:'all 0.2s' }}
+          onMouseOver={e=>e.currentTarget.style.background='rgba(16,185,129,0.15)'}
+          onMouseOut={e=>e.currentTarget.style.background='rgba(16,185,129,0.08)'}>
+          <div style={{ fontSize:'18px', marginBottom:'8px' }}>📚</div>
+          <div style={{ fontSize:'10px', fontWeight:700, color:'rgba(255,255,255,0.4)', letterSpacing:'0.1em', textTransform:'uppercase' }}>Resources</div>
+          <div style={{ fontSize:'18px', fontWeight:800, color:'#34d399', marginTop:'3px' }}>Manage</div>
+        </div>
       </Grid4>
 
       <TwoCol>

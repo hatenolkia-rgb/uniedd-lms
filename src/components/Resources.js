@@ -99,7 +99,7 @@ export default function Resources({ profile }) {
   const lbl = { display:'block', fontSize:'10px', fontWeight:700, color:'rgba(255,255,255,0.35)', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:'6px', marginTop:'14px' }
 
   return (
-    <div style={{ marginTop:'14px' }}>
+    <div id="uniedd-resources" style={{ marginTop:'14px' }}>
       <div style={{ background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.07)', borderRadius:'14px', padding:'1rem 1.1rem' }}>
 
         {/* Header + filter */}
