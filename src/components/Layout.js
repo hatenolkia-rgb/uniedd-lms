@@ -43,6 +43,20 @@ export default function Layout({ profile, pageTitle, children }) {
             fontSize:'12px', fontWeight:800, color:'#fff' }}>
             {initials}
           </div>
+          {profile.role === 'admin' && (
+            <>
+              <button onClick={() => { const el=document.getElementById('uniedd-manage-users'); if(el) el.scrollIntoView({behavior:'smooth'}) }} style={{
+                fontSize:'12px', color:'rgba(255,255,255,0.5)', background:'rgba(232,124,30,0.1)',
+                border:'0.5px solid rgba(232,124,30,0.2)', borderRadius:'6px',
+                padding:'5px 11px', cursor:'pointer', fontFamily:'inherit',
+              }}>👥 Users</button>
+              <button onClick={() => { const el=document.getElementById('uniedd-manage-courses'); if(el) el.scrollIntoView({behavior:'smooth'}) }} style={{
+                fontSize:'12px', color:'rgba(255,255,255,0.5)', background:'rgba(139,92,246,0.1)',
+                border:'0.5px solid rgba(139,92,246,0.2)', borderRadius:'6px',
+                padding:'5px 11px', cursor:'pointer', fontFamily:'inherit',
+              }}>🎓 Courses</button>
+            </>
+          )}
           <button onClick={scrollToCalendar} style={{
             fontSize:'12px', color:'rgba(255,255,255,0.5)', background:'rgba(30,144,255,0.1)',
             border:'0.5px solid rgba(30,144,255,0.2)', borderRadius:'6px',
