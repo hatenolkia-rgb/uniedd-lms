@@ -1,5 +1,5 @@
 {
-  "buildCommand": "CI=false react-scripts build",
+  "buildCommand": "CI=false react-scripts build && cp public/demo-booking.html build/demo-booking.html",
   "outputDirectory": "build",
   "installCommand": "npm install",
   "framework": "create-react-app",
@@ -9,11 +9,11 @@
       "dest": "/demo-booking.html"
     },
     {
-      "src": "/book/(.*)",
+      "src": "/demo-booking.html",
       "dest": "/demo-booking.html"
     },
     {
-      "src": "^/(?!static)(?!demo-booking)(?!book).*",
+      "src": "/(.*)",
       "dest": "/index.html"
     }
   ]
