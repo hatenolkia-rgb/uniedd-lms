@@ -3,8 +3,14 @@
   "outputDirectory": "build",
   "installCommand": "npm install",
   "framework": "create-react-app",
+  "functions": {
+    "api/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
   "rewrites": [
-    { "source": "/book", "destination": "/demo-booking.html" },
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/book",    "destination": "/demo-booking.html" },
     { "source": "/((?!demo-booking.html$).*)", "destination": "/index.html" }
   ]
 }
