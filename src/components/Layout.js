@@ -50,6 +50,11 @@ export default function Layout({ profile, pageTitle, children }) {
                 border:'0.5px solid rgba(232,124,30,0.2)', borderRadius:'6px',
                 padding:'5px 11px', cursor:'pointer', fontFamily:'inherit',
               }}>👥 Users</button>
+              <button onClick={() => { const el=document.getElementById('uniedd-payments'); if(el) el.scrollIntoView({behavior:'smooth'}) }} style={{
+                fontSize:'12px', color:'rgba(255,255,255,0.5)', background:'rgba(16,185,129,0.1)',
+                border:'0.5px solid rgba(16,185,129,0.2)', borderRadius:'6px',
+                padding:'5px 11px', cursor:'pointer', fontFamily:'inherit',
+              }}>💳 Payments</button>
               <button onClick={() => { const el=document.getElementById('uniedd-manage-courses'); if(el) el.scrollIntoView({behavior:'smooth'}) }} style={{
                 fontSize:'12px', color:'rgba(255,255,255,0.5)', background:'rgba(139,92,246,0.1)',
                 border:'0.5px solid rgba(139,92,246,0.2)', borderRadius:'6px',
