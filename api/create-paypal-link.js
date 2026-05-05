@@ -1,10 +1,14 @@
-// Vercel Serverless Function — runs on server, keeps Secret safe
-// Endpoint: POST /api/create-paypal-link
+// Vercel Serverless Function — Node.js CommonJS format
+const https = require('https')
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
+module.exports = async function handler(req, res) {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+
+  if (req.method === 'OPTIONS') return res.status(200).end()
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const { amount, currency, description, studentName, studentEmail, invoiceNo } = req.body
 
@@ -14,10 +18,14 @@ export default async function handler(req, res) {
 
   const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID
   const PAYPAL_SECRET    = process.env.PAYPAL_SECRET
-  const PAYPAL_BASE      = 'https://api-m.paypal.com'  // Live endpoint
+  const PAYPAL_BASE      = 'https://api-m.paypal.com'
+
+  if (!PAYPAL_CLIENT_ID || !PAYPAL_SECRET) {
+    return res.status(500).json({ error: 'PayPal credentials not configured in Vercel environment variables' })
+  }
 
   try {
-    // ── Step 1: Get PayPal Access Token ──────────────────
+    // ── Step 1: Get Access Token ──────────────────────────
     const tokenRes = await fetch(`${PAYPAL_BASE}/v1/oauth2/token`, {
       method: 'POST',
       headers: {
@@ -28,63 +36,49 @@ export default async function handler(req, res) {
     })
 
     const tokenData = await tokenRes.json()
+
     if (!tokenData.access_token) {
       return res.status(500).json({ error: 'Failed to get PayPal token', details: tokenData })
     }
 
     const accessToken = tokenData.access_token
 
-    // ── Step 2: Create PayPal Payment Link ───────────────
-    // PayPal supports INR for invoices/payment links (different from checkout)
-    const paypalCurrency = currency === 'INR' ? 'USD' : currency
+    // ── Step 2: Convert INR to USD if needed ─────────────
+    // PayPal Orders API supports USD, not INR
+    const paypalCurrency = 'USD'
     const paypalAmount   = currency === 'INR'
-      ? (parseFloat(amount) / 83).toFixed(2)   // convert INR → USD
+      ? (parseFloat(amount) / 83).toFixed(2)
       : parseFloat(amount).toFixed(2)
 
-    const linkRes = await fetch(`${PAYPAL_BASE}/v1/payment-experience/web-profiles`, {
-      method: 'GET',
-      headers: { 'Authorization': `Bearer ${accessToken}` },
-    })
-
-    // Use PayPal Orders API to create a payment link
+    // ── Step 3: Create Order ──────────────────────────────
     const orderRes = await fetch(`${PAYPAL_BASE}/v2/checkout/orders`, {
       method: 'POST',
       headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type':     'application/json',
+        'Authorization':    `Bearer ${accessToken}`,
         'PayPal-Request-Id': invoiceNo || `UNIEDD-${Date.now()}`,
       },
       body: JSON.stringify({
         intent: 'CAPTURE',
         purchase_units: [{
-          reference_id:  invoiceNo || `UNIEDD-${Date.now()}`,
-          description:   description,
-          custom_id:     invoiceNo || '',
-          soft_descriptor: 'UNIEDD',
+          reference_id:    invoiceNo || `UNIEDD-${Date.now()}`,
+          description:     description,
+          custom_id:       invoiceNo || '',
           amount: {
             currency_code: paypalCurrency,
             value:         paypalAmount,
           },
-          payee: {
-            email_address: 'unieddllp@gmail.com', // ← your PayPal business email
-          },
-          ...(studentEmail ? {
-            shipping: {
-              name: { full_name: studentName || 'Student' },
-            }
-          } : {})
         }],
         payment_source: {
           paypal: {
             experience_context: {
-              payment_method_preference: 'IMMEDIATE_PAYMENT_REQUIRED',
-              brand_name:    'UniEDD Music & Arts Academy',
-              locale:        'en-IN',
-              landing_page:  'LOGIN',
+              brand_name:          'UniEDD Music & Arts Academy',
+              locale:              'en-IN',
+              landing_page:        'LOGIN',
               shipping_preference: 'NO_SHIPPING',
-              user_action:   'PAY_NOW',
-              return_url:    'https://uniedd-lms.vercel.app/payment-success',
-              cancel_url:    'https://uniedd-lms.vercel.app/payment-cancel',
+              user_action:         'PAY_NOW',
+              return_url:          'https://uniedd-lms.vercel.app',
+              cancel_url:          'https://uniedd-lms.vercel.app',
             }
           }
         }
@@ -97,26 +91,27 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to create PayPal order', details: orderData })
     }
 
-    // Extract the payment link from the response
-    const paymentLink = orderData.links?.find(l => l.rel === 'payer-action')?.href
-      || orderData.links?.find(l => l.rel === 'approve')?.href
+    // Extract payer-action link (the URL student clicks to pay)
+    const paymentLink =
+      orderData.links?.find(l => l.rel === 'payer-action')?.href ||
+      orderData.links?.find(l => l.rel === 'approve')?.href
 
     if (!paymentLink) {
-      return res.status(500).json({ error: 'No payment link in response', details: orderData })
+      return res.status(500).json({ error: 'No payment link returned', details: orderData })
     }
 
     return res.status(200).json({
-      success:      true,
+      success:          true,
       paymentLink,
-      orderId:      orderData.id,
-      amount:       paypalAmount,
-      currency:     paypalCurrency,
-      originalAmount: amount,
+      orderId:          orderData.id,
+      amount:           paypalAmount,
+      currency:         paypalCurrency,
+      originalAmount:   amount,
       originalCurrency: currency,
     })
 
   } catch (err) {
-    console.error('PayPal API error:', err)
+    console.error('PayPal error:', err)
     return res.status(500).json({ error: err.message })
   }
 }
