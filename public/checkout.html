@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pay — UniEDD</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:"DM Sans",sans-serif;
+  background:#060d14;
+  color:#ddeaf5;
+  min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+  background-image:
+    radial-gradient(ellipse at 20% 50%,rgba(20,128,174,.18) 0%,transparent 60%),
+    radial-gradient(ellipse at 80% 10%,rgba(240,160,60,.12) 0%,transparent 50%);
+}
+.card{
+  width:100%;max-width:400px;
+  background:#0a1622;
+  border:1px solid #1a3048;
+  border-radius:24px;
+  padding:32px 28px;
+  box-shadow:0 32px 80px rgba(0,0,0,.5),0 0 0 1px rgba(20,128,174,.1);
+  animation:fadeUp .4s ease;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+.logo{text-align:center;margin-bottom:4px}
+.logo-text{font-family:"Syne",sans-serif;font-weight:900;font-size:30px;letter-spacing:-1px}
+.logo-text .u{color:#1e90ff}
+.logo-text .e{color:#e87c1e}
+.logo-sub{text-align:center;font-size:10px;color:rgba(255,255,255,.25);letter-spacing:.1em;text-transform:uppercase;margin-bottom:22px}
+
+.amount-box{
+  background:rgba(16,185,129,0.08);
+  border:1px solid rgba(16,185,129,0.2);
+  border-radius:14px;padding:16px 18px;margin-bottom:22px;text-align:center;
+}
+.amount-label{font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.amount-value{font-family:"Syne",sans-serif;font-size:32px;font-weight:900;color:#fff}
+.amount-inr{font-size:12px;color:rgba(255,255,255,.3);margin-top:3px}
+.desc{font-size:13px;color:rgba(255,255,255,.55);margin-top:6px;font-weight:500}
+
+.cards-label{font-size:11px;color:rgba(255,255,255,.3);text-align:center;margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.cards{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.card-icon{
+  height:30px;padding:4px 12px;
+  background:#fff;
+  border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+}
+
+.btn-pay{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  width:100%;padding:15px;border:none;border-radius:14px;cursor:pointer;
+  font-family:"Syne",sans-serif;font-size:16px;font-weight:800;
+  transition:all .2s;text-decoration:none;margin-bottom:12px;
+}
+.btn-card{
+  background:linear-gradient(135deg,#1e90ff,#0070cc);
+  color:#fff;
+  box-shadow:0 4px 20px rgba(30,144,255,.4);
+}
+.btn-card:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(30,144,255,.5)}
+.btn-card:active{transform:translateY(0)}
+
+.divider{display:flex;align-items:center;gap:10px;margin:16px 0}
+.divider::before,.divider::after{content:'';flex:1;height:.5px;background:rgba(255,255,255,.1)}
+.divider span{font-size:11px;color:rgba(255,255,255,.3);white-space:nowrap}
+
+.btn-paypal{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:12px;border-radius:12px;cursor:pointer;
+  font-size:14px;font-weight:600;font-family:"DM Sans",sans-serif;
+  background:rgba(255,196,57,0.08);
+  border:1px solid rgba(255,196,57,0.2);
+  color:#ffc439;
+  text-decoration:none;transition:all .15s;
+}
+.btn-paypal:hover{background:rgba(255,196,57,0.15);border-color:rgba(255,196,57,0.4)}
+.pp-logo{font-style:italic;font-weight:900;font-size:17px;letter-spacing:-0.5px}
+.pp-blue{color:#fff}.pp-sky{color:#8cc9f0}
+.pp-sub{font-size:12px;color:rgba(255,255,255,.4)}
+
+.secure{
+  text-align:center;font-size:11px;color:rgba(255,255,255,.2);
+  margin-top:18px;display:flex;align-items:center;justify-content:center;gap:5px;
+  padding-top:16px;border-top:.5px solid rgba(255,255,255,.07);
+}
+.invoice-info{font-size:11px;color:rgba(255,255,255,.15);text-align:center;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-text"><span class="u">UNI</span><span class="e">EDD</span></div>
+  </div>
+  <div class="logo-sub">Music &amp; Arts Academy</div>
+
+  <div class="amount-box">
+    <div class="amount-label">Amount Due</div>
+    <div class="amount-value" id="amount-display">$0.00</div>
+    <div class="amount-inr" id="inr-display"></div>
+    <div class="desc" id="desc-display"></div>
+  </div>
+
+  <div class="cards-label">We Accept</div>
+  <div class="cards">
+    <div class="card-icon">
+      <svg height="18" viewBox="0 0 60 20" xmlns="http://www.w3.org/2000/svg">
+        <text x="0" y="16" font-family="Arial Black,sans-serif" font-size="18" font-weight="900" fill="#1a1f71">VISA</text>
+      </svg>
+    </div>
+    <div class="card-icon">
+      <svg height="22" viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="14" cy="12" r="11" fill="#eb001b"/>
+        <circle cx="24" cy="12" r="11" fill="#f79e1b"/>
+        <path d="M19 4.5A11 11 0 0 1 23.5 12 11 11 0 0 1 19 19.5 11 11 0 0 1 14.5 12 11 11 0 0 1 19 4.5z" fill="#ff5f00"/>
+      </svg>
+    </div>
+    <div class="card-icon">
+      <svg height="18" viewBox="0 0 50 20" xmlns="http://www.w3.org/2000/svg">
+        <rect width="50" height="20" rx="3" fill="#2557d6"/>
+        <text x="5" y="14" font-family="Arial,sans-serif" font-size="9" font-weight="bold" fill="#fff">AMEX</text>
+      </svg>
+    </div>
+    <div class="card-icon">
+      <svg height="18" viewBox="0 0 52 20" xmlns="http://www.w3.org/2000/svg">
+        <rect width="52" height="20" rx="3" fill="#f26722"/>
+        <text x="4" y="14" font-family="Arial,sans-serif" font-size="9" font-weight="bold" fill="#fff">RuPay</text>
+      </svg>
+    </div>
+    <div class="card-icon">
+      <svg height="18" viewBox="0 0 60 20" xmlns="http://www.w3.org/2000/svg">
+        <rect width="60" height="20" rx="3" fill="#1e293b"/>
+        <text x="4" y="14" font-family="Arial,sans-serif" font-size="8" font-weight="bold" fill="#fff">DEBIT</text>
+      </svg>
+    </div>
+  </div>
+
+  <a id="pay-card-btn" href="#" class="btn-pay btn-card" target="_blank">
+    💳 Pay with Card
+  </a>
+
+  <div class="divider"><span>or continue with</span></div>
+
+  <a id="pay-paypal-btn" href="#" class="btn-paypal" target="_blank">
+    <span class="pp-logo"><span class="pp-blue">Pay</span><span class="pp-sky">Pal</span></span>
+    <span class="pp-sub">Log in to PayPal →</span>
+  </a>
+
+  <div class="secure">🔒 256-bit SSL · Secured by PayPal</div>
+  <div class="invoice-info" id="invoice-info"></div>
+</div>
+
+<script>
+  const p = new URLSearchParams(window.location.search)
+  const link = p.get('link'), amount = p.get('amount')
+  const inr = p.get('inr'), desc = p.get('desc')
+  const invoice = p.get('invoice'), name = p.get('name')
+
+  if (amount) document.getElementById('amount-display').textContent = `$${parseFloat(amount).toFixed(2)}`
+  if (inr && inr !== amount) document.getElementById('inr-display').textContent = `≈ ₹${parseFloat(inr).toLocaleString('en-IN')} INR`
+  if (desc) document.getElementById('desc-display').textContent = desc.split('|')[0].trim()
+  if (invoice) document.getElementById('invoice-info').textContent = `Invoice: ${invoice}${name ? ' · ' + name : ''}`
+  if (link) {
+    document.getElementById('pay-card-btn').href   = link
+    document.getElementById('pay-paypal-btn').href = link
+  }
+</script>
+</body>
+</html>
