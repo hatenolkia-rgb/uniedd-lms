@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Uniedd — Book Your Free Demo Class</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1480ae;--blueL:#14a0c8;--gold:#f0a03c;--goldD:#dc8c28;
+  --bg:#060d14;--surface:#0a1622;--card:#0f1e30;--border:#1a3048;
+  --text:#ddeaf5;--muted:#4e7a96;--white:#fff;
+}
+body{
+  font-family:"DM Sans",sans-serif;
+  background:var(--bg);color:var(--text);
+  min-height:100vh;display:flex;align-items:flex-start;justify-content:center;
+  padding:clamp(12px,4vw,32px) clamp(10px,3vw,20px);
+  background-image:radial-gradient(ellipse at 15% 50%,rgba(20,128,174,.18) 0%,transparent 55%),
+    radial-gradient(ellipse at 85% 10%,rgba(240,160,60,.12) 0%,transparent 50%);
+}
+@media(min-height:700px){body{align-items:center}}
+.wrap{
+  width:100%;max-width:460px;background:var(--surface);
+  border:1px solid var(--border);border-radius:24px;
+  padding:clamp(24px,5vw,36px) clamp(18px,5vw,32px) clamp(20px,4vw,32px);
+  box-shadow:0 32px 80px rgba(0,0,0,.5),0 0 0 1px rgba(20,128,174,.1);
+  animation:fadeUp .5s ease;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.logo-wrap{text-align:center;margin-bottom:18px}
+.logo-text{font-family:"Syne",sans-serif;font-weight:900;letter-spacing:-1px;line-height:1}
+.logo-text .uni{color:#1e90ff;font-size:clamp(28px,7vw,40px)}
+.logo-text .edd{color:#e87c1e;font-size:clamp(28px,7vw,40px)}
+.logo-sub{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:.12em;text-transform:uppercase;margin-top:6px}
+.headline{
+  font-family:"Syne",sans-serif;font-size:clamp(18px,4.5vw,24px);font-weight:900;
+  text-align:center;line-height:1.3;margin-bottom:14px;padding:0 4px;
+  background:linear-gradient(135deg,var(--blueL),var(--gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.social-proof{
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  font-size:clamp(11px,2.5vw,12.5px);color:var(--gold);margin:0 auto 22px;
+  background:rgba(240,160,60,.08);border:1px solid rgba(240,160,60,.2);
+  border-radius:20px;padding:6px 12px;width:fit-content;max-width:100%;flex-wrap:wrap;
+}
+.form-group{margin-bottom:14px}
+label{display:block;font-size:clamp(10.5px,2vw,12px);font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+input,select{
+  width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:13px 16px;color:var(--text);font-family:"DM Sans",sans-serif;font-size:14px;
+  outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;
+}
+input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(20,128,174,.15)}
+input::placeholder{color:var(--muted)}
+select{
+  cursor:pointer;padding-right:38px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234e7a96' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;
+}
+select option{background:var(--card);color:var(--text)}
+.phone-row{display:flex;gap:10px}
+.phone-code{
+  width:100px;flex-shrink:0;background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:13px 10px;color:var(--text);font-family:"DM Sans",sans-serif;
+  font-size:14px;outline:none;cursor:pointer;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%234e7a96' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+}
+.phone-code:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(20,128,174,.15)}
+.phone-input{flex:1}
+.age-pills{display:flex;gap:8px;flex-wrap:wrap}
+.age-pill{
+  flex:1;min-width:52px;padding:10px 6px;text-align:center;
+  border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;
+  color:var(--muted);cursor:pointer;background:var(--card);transition:all .15s;user-select:none;
+}
+.age-pill:hover{border-color:var(--blue);color:var(--blueL)}
+.age-pill.selected{
+  background:linear-gradient(135deg,rgba(20,128,174,.25),rgba(240,160,60,.1));
+  border-color:var(--gold);color:var(--white);
+}
+.referral-row{font-size:12.5px;color:var(--muted);margin-bottom:18px;text-align:center}
+.referral-row a{color:var(--blueL);text-decoration:none;font-weight:600}
+.cta-btn{
+  width:100%;padding:15px;border:none;border-radius:14px;
+  font-family:"Syne",sans-serif;font-size:16px;font-weight:800;cursor:pointer;
+  background:linear-gradient(135deg,var(--blue),var(--blueL));color:#fff;
+  box-shadow:0 4px 20px rgba(20,128,174,.4);transition:all .2s;margin-bottom:14px;
+}
+.cta-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(20,128,174,.5)}
+.cta-btn:active{transform:translateY(0)}
+.cta-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.login-link{text-align:center;font-size:13px;color:var(--muted);margin-bottom:16px}
+.ratings{display:flex;gap:10px;justify-content:center;margin-bottom:16px}
+.rating-badge{display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--text)}
+.g-dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#4285f4,#ea4335,#fbbc05,#34a853);flex-shrink:0}
+.terms{text-align:center;font-size:11.5px;color:var(--muted)}
+.terms a{color:var(--muted);text-decoration:underline}
+.success-state{display:none;text-align:center;padding:20px 0}
+.success-icon{font-size:52px;margin-bottom:12px}
+.success-title{font-family:"Syne",sans-serif;font-size:22px;font-weight:800;color:var(--white);margin-bottom:8px}
+.success-sub{font-size:14px;color:var(--muted);line-height:1.6}
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err-msg{margin-top:10px;padding:10px 14px;background:rgba(220,60,60,.1);border:1px solid rgba(220,60,60,.3);border-radius:10px;font-size:13px;color:#f09595;display:none}
+@media(max-width:520px){
+  .wrap{padding:24px 16px 20px;border-radius:18px}
+  .age-pill{min-width:42px;font-size:11.5px;padding:9px 4px}
+  .ratings{flex-direction:column;align-items:center;gap:8px}
+  .phone-code{width:85px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo-wrap">
+    <div class="logo-text"><span class="uni">UNI</span><span class="edd">EDD</span></div>
+    <div class="logo-sub">Music &amp; Arts Academy</div>
+  </div>
+
+  <div id="form-content">
+    <div class="headline">Book Your Free Demo Class</div>
+    <div class="social-proof">
+      ⚡&nbsp;<span id="live-count">247</span>&nbsp;learners booked in the last 24 hours
+    </div>
+
+    <div class="form-group">
+      <label>Student Name</label>
+      <input type="text" id="name" placeholder="Enter the student's name" autocomplete="name"/>
+    </div>
+
+    <div class="form-group">
+      <label>Phone Number (WhatsApp)</label>
+      <div class="phone-row">
+        <select class="phone-code" id="country-code">
+          <option value="+91">+91 IN</option>
+          <option value="+1">+1 US</option>
+          <option value="+44">+44 UK</option>
+          <option value="+971">+971 UAE</option>
+          <option value="+65">+65 SG</option>
+          <option value="+61">+61 AU</option>
+        </select>
+        <input type="tel" id="phone" class="phone-input" placeholder="Enter WhatsApp number" maxlength="15"/>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Email Address</label>
+      <input type="email" id="email" placeholder="your@email.com"/>
+    </div>
+
+    <div class="form-group">
+      <label>Select Age Group</label>
+      <div class="age-pills">
+        <div class="age-pill" data-age="6-12">6–12</div>
+        <div class="age-pill" data-age="13-21">13–21</div>
+        <div class="age-pill" data-age="22-30">22–30</div>
+        <div class="age-pill" data-age="31-40">31–40</div>
+        <div class="age-pill" data-age="40+">40+</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Select Course</label>
+      <select id="course">
+        <option value="">Choose a course…</option>
+        <option>Guitar</option>
+        <option>Piano / Keyboard</option>
+        <option>Vocals (Indian Classical)</option>
+        <option>Vocals (Western)</option>
+        <option>Violin</option>
+        <option>Drums / Percussion</option>
+        <option>Flute</option>
+        <option>Music Production</option>
+        <option>Dance (Bollywood)</option>
+        <option>Dance (Western / Hip Hop)</option>
+        <option>Drawing and Painting</option>
+        <option>Public Speaking</option>
+      </select>
+    </div>
+
+    <div id="referral-section" style="display:none;margin-bottom:14px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Referral Code</label>
+        <input type="text" id="referral" placeholder="Enter referral code"/>
+      </div>
+    </div>
+    <div class="referral-row">
+      Have a referral code? <a href="#" id="referral-toggle">Click here</a>
+    </div>
+
+    <div class="err-msg" id="err-msg"></div>
+
+    <button class="cta-btn" id="submit-btn" onclick="submitForm()">Book Your Free Demo</button>
+
+    <div class="login-link">Already registered? <a href="/">Login to your account</a></div>
+
+    <div class="ratings">
+      <div class="rating-badge"><div class="g-dot"></div> Google: 4.8 ★</div>
+      <div class="rating-badge"><span style="color:#00b67a">★</span> Trustpilot: 4.7</div>
+    </div>
+    <div class="terms">By continuing you agree to our <a href="#">Terms &amp; Conditions</a> and <a href="#">Privacy Policy</a></div>
+  </div>
+
+  <div class="success-state" id="success-state">
+    <div class="success-icon">🎉</div>
+    <div class="success-title">You're Booked!</div>
+    <div class="success-sub">Your free demo class has been scheduled.<br>Our team will contact you on WhatsApp within <strong style="color:#f0a03c">30 minutes</strong> to confirm your slot.</div>
+    <div style="margin-top:20px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:12px;font-size:13px;text-align:left">
+      <div style="color:var(--muted);margin-bottom:8px;font-size:11px;text-transform:uppercase;letter-spacing:.7px">Booking Summary</div>
+      <div id="summary" style="line-height:2;color:var(--text)"></div>
+    </div>
+    <button onclick="resetForm()" style="margin-top:16px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:10px 20px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px">Book another</button>
+  </div>
+</div>
+
+<script>
+// ── Supabase config (same as your app) ──────────────────────
+const SUPABASE_URL = 'https://jtbcsoticxzkohykwsgs.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0YmNzb3RpY3h6a29oeWt3c2dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2MzIxMDksImV4cCI6MjA5MzIwODEwOX0.FJAclFRQB-8FaRuqntIkdmC4_-YuCfE6FvhtqknfI9o'
+
+// ── Detect UTM source from URL (e.g. ?utm_source=google) ────
+function getSource() {
+  const params = new URLSearchParams(window.location.search)
+  const utm = params.get('utm_source')
+  if (utm) return utm.charAt(0).toUpperCase() + utm.slice(1) + ' Ads'
+  return 'Landing Page'
+}
+
+// ── Live counter animation ───────────────────────────────────
+let count = 247
+setInterval(() => {
+  if (Math.random() > 0.6) {
+    count += Math.floor(Math.random() * 3) + 1
+    document.getElementById('live-count').textContent = count
+  }
+}, 8000)
+
+// ── Age pill selection ───────────────────────────────────────
+let selectedAge = ''
+document.querySelectorAll('.age-pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('.age-pill').forEach(x => x.classList.remove('selected'))
+    p.classList.add('selected')
+    selectedAge = p.dataset.age
+  })
+})
+
+// ── Referral toggle ──────────────────────────────────────────
+document.getElementById('referral-toggle').addEventListener('click', e => {
+  e.preventDefault()
+  const s = document.getElementById('referral-section')
+  s.style.display = s.style.display === 'none' ? 'block' : 'none'
+  if (s.style.display === 'block') document.getElementById('referral').focus()
+})
+
+// ── Show error ───────────────────────────────────────────────
+function showErr(msg) {
+  const el = document.getElementById('err-msg')
+  el.textContent = msg
+  el.style.display = 'block'
+  setTimeout(() => el.style.display = 'none', 4000)
+}
+
+// ── Shake field ──────────────────────────────────────────────
+function shake(id) {
+  const el = document.getElementById(id)
+  el.style.borderColor = '#ef4444'
+  el.style.boxShadow = '0 0 0 3px rgba(239,68,68,.2)'
+  el.animate([
+    {transform:'translateX(-6px)'},{transform:'translateX(6px)'},
+    {transform:'translateX(-4px)'},{transform:'translateX(4px)'},
+    {transform:'translateX(0)'}
+  ], {duration:300, easing:'ease-in-out'})
+  el.focus()
+  setTimeout(() => { el.style.borderColor = ''; el.style.boxShadow = '' }, 2000)
+}
+
+// ── Submit form → Supabase leads table ──────────────────────
+async function submitForm() {
+  const name   = document.getElementById('name').value.trim()
+  const phone  = document.getElementById('phone').value.trim()
+  const email  = document.getElementById('email').value.trim()
+  const code   = document.getElementById('country-code').value
+  const course = document.getElementById('course').value
+  const ref    = document.getElementById('referral').value.trim()
+
+  if (!name)       { shake('name');   showErr('Please enter the student name.');  return }
+  if (!phone)      { shake('phone');  showErr('Please enter a phone number.');     return }
+  if (!email)      { shake('email');  showErr('Please enter your email address.'); return }
+  if (!selectedAge){ showErr('Please select an age group.'); return }
+  if (!course)     { shake('course'); showErr('Please select a course.');           return }
+
+  const btn = document.getElementById('submit-btn')
+  btn.disabled = true
+  btn.innerHTML = "<span class='spinner'></span> Booking…"
+
+  try {
+    // Insert into Supabase leads table directly
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/leads`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        full_name:       name,
+        phone:           code + ' ' + phone,
+        email:           email || null,
+        course_interest: course,
+        status:          'New',
+        source:          getSource(),
+        notes:           [
+          `Age group: ${selectedAge}`,
+          ref ? `Referral code: ${ref}` : null,
+          `Submitted via: ${window.location.href}`
+        ].filter(Boolean).join('\n')
+      })
+    })
+
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.message || 'Submission failed')
+    }
+
+    // Show success
+    document.getElementById('form-content').style.display = 'none'
+    document.getElementById('success-state').style.display = 'block'
+    document.getElementById('summary').innerHTML =
+      `<div>👤 Student: <strong>${name}</strong></div>` +
+      `<div>📱 Phone: ${code} ${phone}</div>` +
+      `<div>📧 Email: ${email}</div>` +
+      `<div>🎂 Age Group: ${selectedAge}</div>` +
+      `<div>🎵 Course: ${course}</div>` +
+      (ref ? `<div>🏷 Referral: ${ref}</div>` : '')
+
+  } catch (err) {
+    showErr('⚠ Something went wrong: ' + err.message + '. Please try again.')
+    btn.disabled = false
+    btn.innerHTML = 'Book Your Free Demo'
+  }
+}
+
+// ── Reset form ───────────────────────────────────────────────
+function resetForm() {
+  document.getElementById('form-content').style.display = 'block'
+  document.getElementById('success-state').style.display = 'none'
+  document.getElementById('submit-btn').disabled = false
+  document.getElementById('submit-btn').innerHTML = 'Book Your Free Demo'
+  document.querySelectorAll('.age-pill').forEach(p => p.classList.remove('selected'))
+  selectedAge = ''
+  ;['name','phone','email','referral'].forEach(id => document.getElementById(id).value = '')
+  document.getElementById('course').value = ''
+  document.getElementById('referral-section').style.display = 'none'
+}
+</script>
+</body>
+</html>
