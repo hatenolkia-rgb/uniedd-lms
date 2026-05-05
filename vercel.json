@@ -1,9 +1,10 @@
 {
-  "buildCommand": "CI=false react-scripts build && cp public/demo-booking.html build/demo-booking.html",
+  "buildCommand": "CI=false react-scripts build && cp public/demo-booking.html build/demo-booking.html && cp public/payment-success.html build/payment-success.html",
   "outputDirectory": "build",
   "installCommand": "npm install",
   "rewrites": [
-    { "source": "/book", "destination": "/demo-booking.html" },
-    { "source": "/((?!api|demo-booking.html).*)", "destination": "/index.html" }
+    { "source": "/book",             "destination": "/demo-booking.html"    },
+    { "source": "/payment-success",  "destination": "/payment-success.html" },
+    { "source": "/((?!api|demo-booking.html|payment-success.html).*)", "destination": "/index.html" }
   ]
 }
