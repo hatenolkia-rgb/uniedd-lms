@@ -2,5 +2,19 @@
   "buildCommand": "CI=false react-scripts build",
   "outputDirectory": "build",
   "installCommand": "npm install",
-  "framework": "create-react-app"
+  "framework": "create-react-app",
+  "routes": [
+    {
+      "src": "/book",
+      "dest": "/demo-booking.html"
+    },
+    {
+      "src": "/book/(.*)",
+      "dest": "/demo-booking.html"
+    },
+    {
+      "src": "^/(?!static)(?!demo-booking)(?!book).*",
+      "dest": "/index.html"
+    }
+  ]
 }
