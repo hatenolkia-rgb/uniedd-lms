@@ -20,6 +20,7 @@ const NAV_ITEMS = {
     { id:'uniedd-top',            icon:'chart',   label:'Overview'  },
     { id:'uniedd-manage-users',   icon:'users',   label:'Users'     },
     { id:'uniedd-payments',       icon:'card',    label:'Payments'  },
+  { id:'uniedd-bulk-upload',     icon:'upload',  label:'Bulk Upload'},
     { id:'uniedd-manage-courses', icon:'courses', label:'Courses'   },
     { id:'uniedd-calendar',       icon:'cal',     label:'Calendar'  },
     { id:'uniedd-resources',      icon:'book',    label:'Resources' },
@@ -34,7 +35,7 @@ const NAV_ITEMS = {
   ],
   sales: [
     { id:'leads',   icon:'leads',   label:'Leads'          },
-    { id:'bulk',    icon:'upload',  label:'Bulk Upload'    },
+  
     { id:'funnel',  icon:'funnel',  label:'Funnel'         },
     { id:'demo',    icon:'play',    label:'Schedule Demo'  },
     { id:'classes', icon:'cal',     label:'Teacher Classes'},

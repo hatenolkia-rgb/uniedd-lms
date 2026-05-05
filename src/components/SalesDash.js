@@ -17,7 +17,7 @@ export default function SalesDash({ profile }) {
   return (
     <Layout profile={profile} activeTab={tab} onTabChange={handleTabChange}>
       {tab === 'leads'    && <LeadsSection   profile={profile} />}
-      {tab === 'bulk'     && <BulkSection    profile={profile} />}
+
       {tab === 'funnel'   && <FunnelSection  />}
       {tab === 'demo'     && <DemoSection    profile={profile} />}
       {tab === 'classes'  && <ClassesSection />}
