@@ -5,10 +5,11 @@ import ManageUsers from './ManageUsers'
 import PaymentsAdmin from './PaymentsAdmin'
 import ManageCourses from './ManageCourses'
 import Resources from './Resources'
+import RevenueChart from './RevenueChart'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Row, Pill, Empty } from './Layout'
 
 export default function AdminDash({ profile }) {
-  const [stats,   setStats]   = useState({ users:0, students:0, leads:0, classes:0 })
+  const [stats,   setStats]   = useState({ users:0, students:0, leads:0, classes:0, revenue:0 })
   const [leads,   setLeads]   = useState([])
   const [users,   setUsers]   = useState([])
   const [classes, setClasses] = useState([])
@@ -26,6 +27,7 @@ export default function AdminDash({ profile }) {
       { data: recentLeads },
       { data: recentUsers },
       { data: recentClasses },
+      { data: payments },
     ] = await Promise.all([
       supabase.from('profiles').select('*', { count:'exact', head:true }),
       supabase.from('profiles').select('*', { count:'exact', head:true }).eq('role','student'),
@@ -34,8 +36,10 @@ export default function AdminDash({ profile }) {
       supabase.from('leads').select('*').order('created_at',{ ascending:false }).limit(6),
       supabase.from('profiles').select('*').order('created_at',{ ascending:false }).limit(6),
       supabase.from('classes').select('*').order('created_at',{ ascending:false }).limit(4),
+      supabase.from('payments').select('amount,status').eq('status','paid'),
     ])
-    setStats({ users, students, leads, classes })
+    const revenue = (payments||[]).reduce((a,p) => a+(p.amount||0), 0)
+    setStats({ users, students, leads, classes, revenue })
     setLeads(recentLeads   || [])
     setUsers(recentUsers   || [])
     setClasses(recentClasses || [])
@@ -54,24 +58,10 @@ export default function AdminDash({ profile }) {
       <PageHeader title="Platform Overview" subtitle="Live metrics — real Supabase data." />
 
       <Grid4>
-        <MetricCard icon="👥" label="Total Users" value={stats.users}   />
-        <MetricCard icon="🎓" label="Students"    value={stats.students} />
-        <div onClick={() => { const el=document.getElementById('uniedd-calendar'); if(el) el.scrollIntoView({behavior:'smooth'}) }}
-          style={{ background:'rgba(30,144,255,0.08)', border:'1px solid rgba(30,144,255,0.2)', borderRadius:'14px', padding:'14px', cursor:'pointer', transition:'all 0.2s' }}
-          onMouseOver={e=>e.currentTarget.style.background='rgba(30,144,255,0.15)'}
-          onMouseOut={e=>e.currentTarget.style.background='rgba(30,144,255,0.08)'}>
-          <div style={{ fontSize:'18px', marginBottom:'8px' }}>📅</div>
-          <div style={{ fontSize:'10px', fontWeight:700, color:'rgba(255,255,255,0.4)', letterSpacing:'0.1em', textTransform:'uppercase' }}>Calendar</div>
-          <div style={{ fontSize:'18px', fontWeight:800, color:'#5aabff', marginTop:'3px' }}>{stats.classes} classes</div>
-        </div>
-        <div onClick={() => { const el=document.getElementById('uniedd-resources'); if(el) el.scrollIntoView({behavior:'smooth'}) }}
-          style={{ background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:'14px', padding:'14px', cursor:'pointer', transition:'all 0.2s' }}
-          onMouseOver={e=>e.currentTarget.style.background='rgba(16,185,129,0.15)'}
-          onMouseOut={e=>e.currentTarget.style.background='rgba(16,185,129,0.08)'}>
-          <div style={{ fontSize:'18px', marginBottom:'8px' }}>📚</div>
-          <div style={{ fontSize:'10px', fontWeight:700, color:'rgba(255,255,255,0.4)', letterSpacing:'0.1em', textTransform:'uppercase' }}>Resources</div>
-          <div style={{ fontSize:'18px', fontWeight:800, color:'#34d399', marginTop:'3px' }}>Manage</div>
-        </div>
+        <MetricCard icon="👥" label="Total Users"  value={stats.users}   />
+        <MetricCard icon="🎓" label="Students"     value={stats.students} />
+        <MetricCard icon="📋" label="Active Leads" value={stats.leads}   />
+        <MetricCard icon="💰" label="Revenue"      value={`₹${(stats.revenue||0).toLocaleString('en-IN')}`} />
       </Grid4>
 
       <TwoCol>
@@ -113,11 +103,13 @@ export default function AdminDash({ profile }) {
             ))}
           </div>}
       </Panel>
-    <ManageUsers profile={profile} />
-    <ManageCourses profile={profile} />
-    <PaymentsAdmin profile={profile} />
-    <Calendar profile={profile} />
-    <Resources profile={profile} />
+
+      <RevenueChart />
+      <ManageUsers profile={profile} />
+      <ManageCourses profile={profile} />
+      <PaymentsAdmin profile={profile} />
+      <Calendar profile={profile} />
+      <Resources profile={profile} />
     </Layout>
   )
 }
