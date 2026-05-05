@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Payment Successful — UniEDD</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"DM Sans",sans-serif;background:#060d14;color:#ddeaf5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  background-image:radial-gradient(ellipse at 20% 50%,rgba(20,128,174,.15) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(16,185,129,.1) 0%,transparent 50%)}
+.card{max-width:440px;width:100%;background:#0a1622;border:1px solid #1a3048;border-radius:24px;padding:40px 32px;text-align:center;animation:pop .5s ease}
+@keyframes pop{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}
+.icon{width:80px;height:80px;background:rgba(16,185,129,0.15);border:2px solid rgba(16,185,129,0.4);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:36px}
+.logo{font-family:"Syne",sans-serif;font-weight:900;font-size:28px;margin-bottom:6px}
+.logo .uni{color:#1e90ff}.logo .edd{color:#e87c1e}
+.sub{font-size:11px;color:rgba(255,255,255,.25);letter-spacing:.1em;text-transform:uppercase;margin-bottom:28px}
+h1{font-family:"Syne",sans-serif;font-size:24px;font-weight:800;color:#fff;margin-bottom:10px}
+p{font-size:14px;color:rgba(255,255,255,.5);line-height:1.7;margin-bottom:24px}
+.box{background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2);border-radius:14px;padding:16px 20px;margin-bottom:24px;text-align:left}
+.box-title{font-size:10px;font-weight:700;color:#10b981;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.box-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:.5px solid rgba(255,255,255,.05);color:rgba(255,255,255,.6)}
+.box-row:last-child{border:none}
+.btn{display:inline-block;padding:13px 28px;background:linear-gradient(135deg,#1e90ff,#14a0c8);color:#fff;font-family:"Syne",sans-serif;font-size:15px;font-weight:800;border-radius:12px;text-decoration:none;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo"><span class="uni">UNI</span><span class="edd">EDD</span></div>
+  <div class="sub">Music &amp; Arts Academy</div>
+  <div class="icon">✓</div>
+  <h1>Payment Successful!</h1>
+  <p>Thank you for your payment. Your class booking is confirmed. Our team will contact you on WhatsApp within 30 minutes.</p>
+  <div class="box">
+    <div class="box-title">What happens next?</div>
+    <div class="box-row"><span>📱 WhatsApp confirmation</span><span>Within 30 mins</span></div>
+    <div class="box-row"><span>📅 Class schedule</span><span>Sent by teacher</span></div>
+    <div class="box-row"><span>🔗 Zoom link</span><span>Before first class</span></div>
+  </div>
+  <a href="https://uniedd-lms.vercel.app" class="btn">Go to Dashboard →</a>
+</div>
+</body>
+</html>
