@@ -3,18 +3,8 @@
   "outputDirectory": "build",
   "installCommand": "npm install",
   "framework": "create-react-app",
-  "routes": [
-    {
-      "src": "/book",
-      "dest": "/demo-booking.html"
-    },
-    {
-      "src": "/demo-booking.html",
-      "dest": "/demo-booking.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+  "rewrites": [
+    { "source": "/book", "destination": "/demo-booking.html" },
+    { "source": "/((?!demo-booking.html$).*)", "destination": "/index.html" }
   ]
 }
