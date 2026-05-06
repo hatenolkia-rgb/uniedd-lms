@@ -37,8 +37,9 @@ const NAV_ITEMS = {
     { id:'leads',   icon:'leads',   label:'Leads'          },
   
     { id:'funnel',  icon:'funnel',  label:'Funnel'         },
-    { id:'demo',    icon:'play',    label:'Schedule Demo'  },
-    { id:'classes', icon:'cal',     label:'Teacher Classes'},
+    { id:'demo',       icon:'play',    label:'Schedule Demo'   },
+    { id:'newclass',    icon:'video',   label:'Schedule Class'  },
+    { id:'classes',     icon:'cal',     label:'Teacher Classes' },
     { id:'invoice', icon:'invoice', label:'Invoice'        },
     { id:'calendar',icon:'cal2',    label:'Calendar'       },
     { id:'resources',icon:'book',   label:'Resources'      },

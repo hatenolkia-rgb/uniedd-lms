@@ -20,6 +20,7 @@ export default function SalesDash({ profile }) {
 
       {tab === 'funnel'   && <FunnelSection  />}
       {tab === 'demo'     && <DemoSection    profile={profile} />}
+      {tab === 'newclass' && <ScheduleClassSection profile={profile} />}
       {tab === 'classes'  && <ClassesSection />}
       {tab === 'invoice'  && <InvoiceSection profile={profile} />}
       {tab === 'calendar' && <CalendarSection profile={profile} />}
@@ -508,6 +509,113 @@ function InvoiceSection({ profile }) {
             </table>
           </div>}
       </Panel>
+    </>
+  )
+}
+
+
+// ── SCHEDULE CLASS (Sales can create classes) ───────────────
+function ScheduleClassSection({ profile }) {
+  const [teachers, setTeachers] = useState([])
+  const [title,    setTitle]    = useState('')
+  const [teacherId,setTeacherId]= useState('')
+  const [date,     setDate]     = useState('')
+  const [time,     setTime]     = useState('')
+  const [batch,    setBatch]    = useState('')
+  const [meetLink, setMeetLink] = useState('')
+  const [classes,  setClasses]  = useState([])
+  const [busy,     setBusy]     = useState(false)
+  const [ok,       setOk]       = useState('')
+  const [err,      setErr]      = useState('')
+
+  useEffect(() => { loadData() }, [])
+
+  async function loadData() {
+    const [{ data: t }, { data: c }] = await Promise.all([
+      supabase.from('profiles').select('id,full_name').eq('role','teacher'),
+      supabase.from('classes').select('*').order('class_date',{ascending:false}).limit(10),
+    ])
+    setTeachers(t||[]); setClasses(c||[])
+  }
+
+  async function scheduleClass(e) {
+    e.preventDefault(); setErr(''); setOk(''); setBusy(true)
+    if (!title.trim() || !date) { setErr('Title and date are required.'); setBusy(false); return }
+    const teacher = teachers.find(t => t.id === teacherId)
+    const { error } = await supabase.from('classes').insert({
+      title: title.trim(),
+      teacher_id:   teacherId || null,
+      teacher_name: teacher?.full_name || null,
+      class_date:   date,
+      start_time:   time || null,
+      batch:        batch || null,
+      meet_link:    meetLink.trim() || null,
+      created_by:   profile.full_name,
+    })
+    if (error) setErr(error.message)
+    else {
+      // Add to calendar
+      const [y,m,d] = date.split('-').map(Number)
+      await supabase.from('events').insert({ title:title.trim(), event_type:'class', day:d, month:m, year:y, time:time||null, teacher_name:teacher?.full_name||null, batch:batch||null })
+      setOk('✓ Class scheduled!'); setTitle(''); setTeacherId(''); setDate(''); setTime(''); setBatch(''); setMeetLink(''); loadData()
+    }
+    setBusy(false); setTimeout(()=>setOk(''),4000)
+  }
+
+  const today    = new Date().toISOString().slice(0,10)
+  const upcoming = classes.filter(c => c.class_date >= today)
+  const inp = { width:'100%', background:'rgba(255,255,255,0.05)', border:'0.5px solid rgba(255,255,255,0.1)', borderRadius:'10px', padding:'11px 13px', fontSize:'14px', color:'rgba(255,255,255,0.85)', outline:'none', fontFamily:'inherit', boxSizing:'border-box' }
+  const lbl = { display:'block', fontSize:'10px', fontWeight:700, color:'rgba(255,255,255,0.32)', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:'6px', marginTop:'14px' }
+
+  return (
+    <>
+      <PageHeader title="Schedule Class" subtitle="Create and assign a class to a teacher." />
+      <TwoCol>
+        <Panel title="+ New Class">
+          <form onSubmit={scheduleClass}>
+            <label style={lbl}>Class Title *</label>
+            <input style={inp} type="text" placeholder="e.g. Guitar Batch A — May" value={title} onChange={e=>setTitle(e.target.value)} required />
+            <label style={lbl}>Assign Teacher</label>
+            <select style={inp} value={teacherId} onChange={e=>setTeacherId(e.target.value)}>
+              <option value="">— Select teacher —</option>
+              {teachers.map(t => <option key={t.id} value={t.id}>{t.full_name}</option>)}
+            </select>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+              <div><label style={lbl}>Date *</label><input style={inp} type="date" value={date} onChange={e=>setDate(e.target.value)} required /></div>
+              <div><label style={lbl}>Time</label><input style={inp} type="time" value={time} onChange={e=>setTime(e.target.value)} /></div>
+            </div>
+            <label style={lbl}>Batch / Group</label>
+            <input style={inp} type="text" placeholder="e.g. Batch A" value={batch} onChange={e=>setBatch(e.target.value)} />
+            <label style={lbl}>Zoom Link (optional)</label>
+            <input style={inp} type="url" placeholder="https://zoom.us/j/..." value={meetLink} onChange={e=>setMeetLink(e.target.value)} />
+            {err && <div style={{marginTop:'10px',padding:'8px 12px',background:'rgba(220,60,60,0.1)',border:'0.5px solid rgba(220,60,60,0.3)',borderRadius:'8px',fontSize:'13px',color:'#f09595'}}>{err}</div>}
+            {ok  && <div style={{marginTop:'10px',padding:'8px 12px',background:'rgba(16,185,129,0.1)',border:'0.5px solid rgba(16,185,129,0.3)',borderRadius:'8px',fontSize:'13px',color:'#34d399'}}>{ok}</div>}
+            <button type="submit" disabled={busy} style={{width:'100%',padding:'12px',background:'#8b5cf6',color:'#fff',fontSize:'14px',fontWeight:700,border:'none',borderRadius:'10px',cursor:'pointer',marginTop:'14px',fontFamily:'inherit',opacity:busy?0.6:1}}>
+              {busy ? 'Scheduling...' : '📅 Schedule Class'}
+            </button>
+          </form>
+        </Panel>
+        <Panel title={`Recent Classes (${upcoming.length} upcoming)`}>
+          {classes.length === 0 ? <Empty msg="No classes yet." /> :
+            classes.map(c => (
+              <div key={c.id} style={{padding:'9px 0',borderBottom:'0.5px solid rgba(255,255,255,0.05)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:'13px',color:'rgba(255,255,255,0.85)',fontWeight:500}}>{c.title}</div>
+                    <div style={{fontSize:'11px',color:'rgba(255,255,255,0.3)',marginTop:'2px'}}>
+                      {c.class_date} {c.start_time && `· ${c.start_time}`}
+                      {c.teacher_name && ` · 👨‍🏫 ${c.teacher_name}`}
+                      {c.batch && ` · ${c.batch}`}
+                    </div>
+                  </div>
+                  <span style={{fontSize:'9px',fontWeight:700,padding:'3px 8px',borderRadius:'8px',background:c.class_date>=today?'rgba(30,144,255,0.15)':'rgba(16,185,129,0.1)',color:c.class_date>=today?'#5aabff':'#34d399'}}>
+                    {c.class_date>=today?'Upcoming':'Done'}
+                  </span>
+                </div>
+              </div>
+            ))}
+        </Panel>
+      </TwoCol>
     </>
   )
 }
