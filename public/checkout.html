@@ -104,7 +104,7 @@ body{
   <div class="amount-box">
     <div class="amount-label">Amount Due</div>
     <div class="amount-value" id="amount-display">$0.00</div>
-    <div class="amount-inr" id="inr-display"></div>
+    
     <div class="desc" id="desc-display"></div>
   </div>
 
@@ -164,7 +164,7 @@ body{
   const invoice = p.get('invoice'), name = p.get('name')
 
   if (amount) document.getElementById('amount-display').textContent = `$${parseFloat(amount).toFixed(2)}`
-  if (inr && inr !== amount) document.getElementById('inr-display').textContent = `≈ ₹${parseFloat(inr).toLocaleString('en-IN')} INR`
+  // INR display removed
   if (desc) document.getElementById('desc-display').textContent = desc.split('|')[0].trim()
   if (invoice) document.getElementById('invoice-info').textContent = `Invoice: ${invoice}${name ? ' · ' + name : ''}`
   if (link) {
