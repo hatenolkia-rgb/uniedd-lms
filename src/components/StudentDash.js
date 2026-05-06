@@ -98,7 +98,7 @@ export default function StudentDash({ profile }) {
           ? <div style={{ background:'rgba(232,124,30,0.1)', border:'1px solid rgba(232,124,30,0.3)', borderRadius:'14px', padding:'14px', cursor:'pointer' }} onClick={() => setTab('payments')}>
               <div style={{ fontSize:'18px', marginBottom:'8px' }}>💳</div>
               <div style={{ fontSize:'10px', fontWeight:700, color:'#f4a335', letterSpacing:'0.1em', textTransform:'uppercase' }}>Fee Due</div>
-              <div style={{ fontSize:'22px', fontWeight:800, color:'#f4a335', marginTop:'3px' }}>₹{totalDue.toLocaleString('en-IN')}</div>
+              <div style={{ fontSize:'22px', fontWeight:800, color:'#f4a335', marginTop:'3px' }}>${totalDue.toFixed(2)} USD</div>
             </div>
           : <MetricCard icon="💳" label="Fees Paid" value={`₹${totalPaid.toLocaleString('en-IN')}`} />
         }
@@ -149,7 +149,7 @@ export default function StudentDash({ profile }) {
                 <div>
                   <div style={{ fontSize:'13px', color:'#f4a335', fontWeight:500 }}>Fee payment pending</div>
                   <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.3)', marginTop:'2px' }}>
-                    ₹{totalDue.toLocaleString('en-IN')} outstanding —{' '}
+                    ${totalDue.toFixed(2)} USD outstanding —{' '}
                     <span style={{ color:'#5aabff', cursor:'pointer' }} onClick={() => setTab('payments')}>view details</span>
                   </div>
                 </div>
@@ -260,8 +260,8 @@ export default function StudentDash({ profile }) {
              ) : (
                <div style={{ display:'grid', gap:'8px' }}>
                  <div style={{ display:'flex', gap:'10px', marginBottom:'6px', flexWrap:'wrap' }}>
-                   <div style={{ padding:'6px 14px', borderRadius:'20px', background:'rgba(16,185,129,0.1)', fontSize:'12px', fontWeight:700, color:'#10b981' }}>Paid: ₹{totalPaid.toLocaleString('en-IN')}</div>
-                   {totalDue > 0 && <div style={{ padding:'6px 14px', borderRadius:'20px', background:'rgba(232,124,30,0.1)', fontSize:'12px', fontWeight:700, color:'#f4a335' }}>Due: ₹{totalDue.toLocaleString('en-IN')}</div>}
+                   <div style={{ padding:'6px 14px', borderRadius:'20px', background:'rgba(16,185,129,0.1)', fontSize:'12px', fontWeight:700, color:'#10b981' }}>Paid: ${totalPaid.toFixed(2)} USD</div>
+                   {totalDue > 0 && <div style={{ padding:'6px 14px', borderRadius:'20px', background:'rgba(232,124,30,0.1)', fontSize:'12px', fontWeight:700, color:'#f4a335' }}>Due: ${totalDue.toFixed(2)} USD</div>}
                  </div>
                  {payments.map(p => (
                    <div key={p.id} style={{ padding:'12px 14px', background:'rgba(255,255,255,0.03)', borderRadius:'10px', borderLeft:`3px solid ${statusColor[p.status]||'#888'}` }}>
@@ -277,9 +277,7 @@ export default function StudentDash({ profile }) {
                        </div>
                        <div style={{ textAlign:'right', flexShrink:0 }}>
                          <div style={{ fontSize:'16px', fontWeight:800, color:statusColor[p.status]||'#fff' }}>
-                           {p.currency && p.currency !== 'INR' && p.amount_foreign
-                             ? `${p.currency === 'USD' ? '$' : p.currency}${p.amount_foreign}`
-                             : `₹${(p.amount||0).toLocaleString('en-IN')}`}
+                           {`${p.currency === 'USD' ? '$' : p.currency === 'GBP' ? '£' : p.currency === 'EUR' ? '€' : '$'}${(p.amount||0).toFixed(2)} ${p.currency||'USD'}`}
                          </div>
                          <span style={{ fontSize:'9px', fontWeight:700, padding:'2px 8px', borderRadius:'10px', background:statusBg[p.status]||'rgba(255,255,255,0.05)', color:statusColor[p.status]||'#aaa', textTransform:'uppercase' }}>{p.status}</span>
                        </div>
