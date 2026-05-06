@@ -15,33 +15,61 @@ const TYPE_COLOR = {
 
 export default function Calendar({ profile }) {
   const now     = new Date()
-  const [year,  setYear]   = useState(now.getFullYear())
-  const [month, setMonth]  = useState(now.getMonth())   // 0-indexed
-  const [events, setEvents] = useState([])
-  const [classes, setClasses] = useState([])
-  const [selected, setSelected] = useState(null)   // selected day number
-  const [showAdd, setShowAdd]   = useState(false)
-  const [form, setForm] = useState({ title:'', type:'class', time:'' })
-  const [saving, setSaving] = useState(false)
+  const [year,     setYear]     = useState(now.getFullYear())
+  const [month,    setMonth]    = useState(now.getMonth())
+  const [events,   setEvents]   = useState([])
+  const [classes,  setClasses]  = useState([])
+  const [selected, setSelected] = useState(null)
+  const [showAdd,  setShowAdd]  = useState(false)
+  const [form,     setForm]     = useState({ title:'', type:'class', time:'' })
+  const [saving,   setSaving]   = useState(false)
 
   const canAdd = ['admin','teacher','sales'].includes(profile.role)
 
-  useEffect(() => { loadData() }, [year, month])
+  useEffect(() => { loadData() }, [year, month, profile.id, profile.role])
 
   async function loadData() {
-    // Load events for this month
-    const [{ data: evts }, { data: cls }] = await Promise.all([
-      supabase.from('events')
-        .select('*')
-        .eq('year', year)
-        .eq('month', month + 1),
-      supabase.from('classes')
-        .select('*')
-        .gte('class_date', `${year}-${String(month+1).padStart(2,'0')}-01`)
-        .lte('class_date', `${year}-${String(month+1).padStart(2,'0')}-31`),
-    ])
+    const startDate = `${year}-${String(month+1).padStart(2,'0')}-01`
+    const endDate   = `${year}-${String(month+1).padStart(2,'0')}-31`
+
+    // Events — admin/sales see all, teacher/student see only their own
+    let evtQuery = supabase.from('events').select('*').eq('year', year).eq('month', month + 1)
+    if (profile.role === 'teacher') {
+      evtQuery = evtQuery.eq('teacher_name', profile.full_name)
+    }
+    const { data: evts } = await evtQuery
+
+    // Classes — scoped by role
+    let cls = []
+
+    if (profile.role === 'admin' || profile.role === 'sales') {
+      // Admin/Sales see ALL classes
+      const { data } = await supabase.from('classes').select('*')
+        .gte('class_date', startDate).lte('class_date', endDate)
+      cls = data || []
+
+    } else if (profile.role === 'teacher') {
+      // Teacher sees only their assigned classes
+      const { data } = await supabase.from('classes').select('*')
+        .eq('teacher_id', profile.id)
+        .gte('class_date', startDate).lte('class_date', endDate)
+      cls = data || []
+
+    } else if (profile.role === 'student') {
+      // Student sees only enrolled classes
+      const { data: enrollments } = await supabase
+        .from('enrollments').select('class_id').eq('student_id', profile.id)
+      const classIds = (enrollments || []).map(e => e.class_id).filter(Boolean)
+      if (classIds.length > 0) {
+        const { data } = await supabase.from('classes').select('*')
+          .in('id', classIds)
+          .gte('class_date', startDate).lte('class_date', endDate)
+        cls = data || []
+      }
+    }
+
     setEvents(evts || [])
-    setClasses(cls || [])
+    setClasses(cls)
   }
 
   // Build calendar grid
@@ -99,6 +127,10 @@ export default function Calendar({ profile }) {
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px' }}>
         <div style={{ fontSize:'15px', fontWeight:700, color:'#fff' }}>
           📅 {MONTHS[month]} {year}
+          <span style={{ fontSize:'11px', fontWeight:400, color:'rgba(255,255,255,0.3)', marginLeft:'8px' }}>
+            {profile.role === 'student' ? '(your classes only)' :
+             profile.role === 'teacher' ? '(your classes only)' : ''}
+          </span>
         </div>
         <div style={{ display:'flex', gap:'6px', alignItems:'center' }}>
           {canAdd && selected && (
@@ -126,8 +158,8 @@ export default function Calendar({ profile }) {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'2px' }}>
         {cells.map((day, i) => {
           if (!day) return <div key={`empty-${i}`} />
-          const dayEvts   = getEventsForDay(day)
-          const isToday   = day === todayDay
+          const dayEvts    = getEventsForDay(day)
+          const isToday    = day === todayDay
           const isSelected = day === selected
           return (
             <div key={day} onClick={() => setSelected(isSelected ? null : day)} style={{
@@ -200,9 +232,11 @@ export default function Calendar({ profile }) {
             </form>
           )}
 
-          {/* Events list for selected day */}
+          {/* Events list */}
           {selectedEvents.length === 0
-            ? <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.25)', textAlign:'center', padding:'12px' }}>No events this day{canAdd ? ' — click "+ Add Event" to add one' : ''}</div>
+            ? <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.25)', textAlign:'center', padding:'12px' }}>
+                No events this day{canAdd ? ' — click "+ Add Event" to add one' : ''}
+              </div>
             : selectedEvents.map((ev, i) => (
               <div key={i} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'8px 10px', background:'rgba(255,255,255,0.04)', borderRadius:'8px', marginBottom:'6px', border:`0.5px solid ${TYPE_COLOR[ev.event_type] || '#888'}33` }}>
                 <div style={{ width:'8px', height:'8px', borderRadius:'50%', background: TYPE_COLOR[ev.event_type] || '#888', flexShrink:0 }}/>
@@ -210,6 +244,7 @@ export default function Calendar({ profile }) {
                   <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.85)', fontWeight:500 }}>{ev.title}</div>
                   <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.3)', marginTop:'1px' }}>
                     {ev.time || ev.start_time || ''} {ev.event_type && `· ${ev.event_type}`} {ev.batch && `· ${ev.batch}`}
+                    {ev.teacher_name && ` · 👨‍🏫 ${ev.teacher_name}`}
                   </div>
                 </div>
                 {ev.meet_link && (
