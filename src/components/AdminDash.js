@@ -6,6 +6,7 @@ import PaymentsAdmin from './PaymentsAdmin'
 import ManageCourses from './ManageCourses'
 import Resources from './Resources'
 import RevenueChart from './RevenueChart'
+import EnrolStudent from './EnrolStudent'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Row, Pill, Empty, Lbl, Inp, Btn, Err, Ok } from './Layout'
 
 const SOURCE_COLOR = {
@@ -292,6 +293,7 @@ export default function AdminDash({ profile }) {
       )}
 
       {/* Sections always rendered (anchor scroll for sidebar nav) */}
+      <EnrolStudent />
       <ManageUsers   profile={profile} />
       <ManageCourses profile={profile} />
       <PaymentsAdmin profile={profile} />
