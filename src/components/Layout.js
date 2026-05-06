@@ -35,7 +35,8 @@ const NAV_ITEMS = {
   ],
   sales: [
     { id:'leads',   icon:'leads',   label:'Leads'          },
-  
+    { id:'enrol',   icon:'check',   label:'Enrol Student'  },
+    { id:'payment', icon:'card',    label:'Payments'       },
     { id:'funnel',  icon:'funnel',  label:'Funnel'         },
     { id:'demo',       icon:'play',    label:'Schedule Demo'   },
     { id:'newclass',    icon:'video',   label:'Schedule Class'  },
