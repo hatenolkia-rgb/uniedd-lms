@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Lbl, Inp, Btn, Err, Ok, Empty } from './Layout'
+import EnrolStudent from './EnrolStudent'
+import PaymentsAdmin from './PaymentsAdmin'
 import Calendar from './Calendar'
 import Resources from './Resources'
 
@@ -20,6 +22,8 @@ export default function SalesDash({ profile }) {
 
       {tab === 'funnel'   && <FunnelSection  />}
       {tab === 'demo'     && <DemoSection    profile={profile} />}
+      {tab === 'enrol'    && <EnrolSection   profile={profile} />}
+      {tab === 'payment'  && <PaymentSection  profile={profile} />}
       {tab === 'newclass' && <ScheduleClassSection profile={profile} />}
       {tab === 'classes'  && <ClassesSection />}
       {tab === 'invoice'  && <InvoiceSection profile={profile} />}
@@ -616,6 +620,24 @@ function ScheduleClassSection({ profile }) {
             ))}
         </Panel>
       </TwoCol>
+    </>
+  )
+}
+
+function EnrolSection({ profile }) {
+  return (
+    <>
+      <PageHeader title="Enrol Student" subtitle="Enrol a student in a course." />
+      <EnrolStudent />
+    </>
+  )
+}
+
+function PaymentSection({ profile }) {
+  return (
+    <>
+      <PageHeader title="Payments" subtitle="Generate and manage payment links." />
+      <PaymentsAdmin profile={profile} />
     </>
   )
 }
