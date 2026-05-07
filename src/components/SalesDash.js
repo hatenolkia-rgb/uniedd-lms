@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Lbl, Inp, Btn, Err, Ok, Empty } from './Layout'
+import { sendEmail } from '../emailService'
 import EnrolStudent from './EnrolStudent'
 import PaymentsAdmin from './PaymentsAdmin'
 import Calendar from './Calendar'
@@ -561,6 +562,24 @@ function ScheduleClassSection({ profile }) {
       // Add to calendar
       const [y,m,d] = date.split('-').map(Number)
       await supabase.from('events').insert({ title:title.trim(), event_type:'class', day:d, month:m, year:y, time:time||null, teacher_name:teacher?.full_name||null, batch:batch||null })
+      // Send class scheduled email to all enrolled students of this teacher
+      try {
+        const { data: enrolledStudents } = await supabase
+          .from('enrollments')
+          .select('student_id, profiles:student_id(full_name, email)')
+          .not('student_id', 'is', null)
+        if (enrolledStudents) {
+          enrolledStudents.forEach(e => {
+            if (e.profiles?.email) {
+              sendEmail('class_scheduled', e.profiles.email, {
+                name: e.profiles.full_name, classTitle: title.trim(),
+                classDate: date, startTime: time || null,
+                teacherName: teacher?.full_name || null, zoomLink: meetLink.trim() || null,
+              })
+            }
+          })
+        }
+      } catch(emailErr) { console.log('Email error:', emailErr) }
       setOk('✓ Class scheduled!'); setTitle(''); setTeacherId(''); setDate(''); setTime(''); setBatch(''); setMeetLink(''); loadData()
     }
     setBusy(false); setTimeout(()=>setOk(''),4000)

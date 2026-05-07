@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { sendEmail } from '../emailService'
 import { supabase } from '../supabaseClient'
 
 const BUSINESS_NAME = 'UniEDD Music & Arts Academy'
@@ -96,6 +97,14 @@ export default function PaymentsAdmin({ profile }) {
 
       setGenerated({ link: data.paymentLink, invoiceNo, studentName: student?.full_name, amount: amtNum, currency, course: courseName.trim(), type: 'paypal' })
       setOk(`✓ PayPal link generated — ${invoiceNo}`)
+      // Send payment link email to student
+      if (student?.email) {
+        sendEmail('payment_link', student.email, {
+          name: student.full_name, courseName: courseName.trim(),
+          amount: amtNum, currency, paymentLink: data.paymentLink,
+          invoiceNo, dueDate: dueDate || null,
+        })
+      }
       resetForm(); load()
     } catch(e) { setErr('⚠ ' + e.message) }
     setBusy(false)
@@ -161,7 +170,16 @@ export default function PaymentsAdmin({ profile }) {
 
   async function markPaid(id) {
     await supabase.from('payments').update({ status:'paid', paid_date: new Date().toISOString().slice(0,10) }).eq('id', id)
-    setOk('✓ Marked as paid'); setTimeout(() => setOk(''), 3000); load()
+    // Send receipt email
+    const p = payments.find(pay => pay.id === id)
+    if (p?.student_email) {
+      sendEmail('payment_receipt', p.student_email, {
+        name: p.student_name, courseName: p.course_name,
+        amount: p.amount, currency: p.currency || 'USD',
+        invoiceNo: p.invoice_no, paidDate: new Date().toISOString().slice(0,10),
+      })
+    }
+    setOk('✓ Marked as paid · Receipt email sent'); setTimeout(() => setOk(''), 3000); load()
   }
 
   async function deletePay(id) {

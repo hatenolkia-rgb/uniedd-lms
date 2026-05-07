@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { sendEmail } from '../emailService'
 import { supabase } from '../supabaseClient'
 
 export default function EnrolStudent() {
@@ -43,7 +44,16 @@ export default function EnrolStudent() {
     else {
       const student = students.find(s => s.id === selStudent)
       const course  = courses.find(c => c.id === selCourse)
-      setOk(`✓ ${student?.full_name} enrolled in "${course?.title}"`)
+      const course2 = courses.find(c => c.id === selCourse)
+      setOk(`✓ ${student?.full_name} enrolled in "${course2?.title}"`)
+      // Send enrolment confirmation email
+      if (student?.email) {
+        sendEmail('enrolment', student.email, {
+          name: student.full_name,
+          courseName: course2?.title,
+          fee: course2?.fee,
+        })
+      }
       setSelCourse('')
       load()
     }
