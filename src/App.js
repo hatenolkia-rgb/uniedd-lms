@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
+import { sendEmail } from './emailService'
 import LoginPage   from './components/LoginPage'
 import AdminDash   from './components/AdminDash'
 import TeacherDash from './components/TeacherDash'
@@ -50,6 +51,10 @@ export default function App() {
         .select()
         .single()
       data = res.data
+      // New user — send welcome email
+      if (data?.email) {
+        sendEmail('welcome', data.email, { name: data.full_name || 'there' })
+      }
     }
     setProfile(data)
     setLoading(false)
