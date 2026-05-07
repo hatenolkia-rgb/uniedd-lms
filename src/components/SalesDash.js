@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Lbl, Inp, Btn, Err, Ok, Empty } from './Layout'
 import { sendEmail } from '../emailService'
 import EnrolStudent from './EnrolStudent'
+import ScheduleClasses from './ScheduleClasses'
 import PaymentsAdmin from './PaymentsAdmin'
 import Calendar from './Calendar'
 import Resources from './Resources'
@@ -25,6 +26,7 @@ export default function SalesDash({ profile }) {
       {tab === 'demo'     && <DemoSection    profile={profile} />}
       {tab === 'enrol'    && <EnrolSection   profile={profile} />}
       {tab === 'payment'  && <PaymentSection  profile={profile} />}
+      {tab === 'scheduleclasses' && <ScheduleClasssSection profile={profile} />}
       {tab === 'newclass' && <ScheduleClassSection profile={profile} />}
       {tab === 'classes'  && <ClassesSection />}
       {tab === 'invoice'  && <InvoiceSection profile={profile} />}
@@ -520,6 +522,15 @@ function InvoiceSection({ profile }) {
 
 
 // ── SCHEDULE CLASS (Sales can create classes) ───────────────
+function ScheduleClasssSection({ profile }) {
+  return (
+    <>
+      <PageHeader title="Schedule Classes" subtitle="Schedule single or bulk classes for entire course." />
+      <ScheduleClasses profile={profile} />
+    </>
+  )
+}
+
 function ScheduleClassSection({ profile }) {
   const [teachers, setTeachers] = useState([])
   const [title,    setTitle]    = useState('')

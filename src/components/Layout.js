@@ -39,7 +39,7 @@ const NAV_ITEMS = {
     { id:'payment', icon:'card',    label:'Payments'       },
     { id:'funnel',  icon:'funnel',  label:'Funnel'         },
     { id:'demo',       icon:'play',    label:'Schedule Demo'   },
-    { id:'newclass',    icon:'video',   label:'Schedule Class'  },
+    { id:'scheduleclasses', icon:'video', label:'Schedule Classes' },
     { id:'classes',     icon:'cal',     label:'Teacher Classes' },
     { id:'invoice', icon:'invoice', label:'Invoice'        },
     { id:'calendar',icon:'cal2',    label:'Calendar'       },
