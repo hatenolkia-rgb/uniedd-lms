@@ -14,7 +14,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    // Get token
+    // Step 1: Get token
     const tokenRes = await fetch('https://api-m.paypal.com/v1/oauth2/token', {
       method: 'POST',
       headers: {
@@ -27,15 +27,16 @@ module.exports = async function handler(req, res) {
     if (!tokenData.access_token) {
       return res.status(500).json({ error: 'Token failed', details: tokenData })
     }
+    const token = tokenData.access_token
 
     const usdAmount = parseFloat(amount).toFixed(2)
 
-    // Create Invoice (works for international payments)
+    // Step 2: Create invoice
     const invoiceRes = await fetch('https://api-m.paypal.com/v2/invoicing/invoices', {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
-        'Authorization': `Bearer ${tokenData.access_token}`,
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({
         detail: {
@@ -43,13 +44,11 @@ module.exports = async function handler(req, res) {
           invoice_date:   new Date().toISOString().slice(0,10),
           currency_code:  'USD',
           payment_term:   { term_type: 'DUE_ON_RECEIPT' },
-          note:           `Payment for ${description} — UniEDD Music & Arts Academy`,
-          memo:           invoiceNo || '',
+          note:           `UniEDD Music & Arts Academy — ${description}`,
         },
         invoicer: {
           name:          { given_name: 'UniEDD', surname: 'Academy' },
           email_address: 'unieddllp@gmail.com',
-          website:       'https://uniedd-lms.vercel.app',
         },
         primary_recipients: [{
           billing_info: {
@@ -76,29 +75,35 @@ module.exports = async function handler(req, res) {
 
     const invoiceData = await invoiceRes.json()
     const invoiceId   = invoiceData.href?.split('/').pop() || invoiceData.id
-
     if (!invoiceId) {
       return res.status(500).json({ error: 'Invoice creation failed', details: invoiceData })
     }
 
-    // Send/publish invoice
-    await fetch(`https://api-m.paypal.com/v2/invoicing/invoices/${invoiceId}/send`, {
+    // Step 3: SEND invoice — this activates the payer link
+    const sendRes = await fetch(`https://api-m.paypal.com/v2/invoicing/invoices/${invoiceId}/send`, {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
-        'Authorization': `Bearer ${tokenData.access_token}`,
+        'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ send_to_recipient: false, send_to_invoicer: false }),
+      body: JSON.stringify({
+        send_to_recipient: false,
+        send_to_invoicer:  false,
+        subject:           `Payment for ${description}`,
+        note:              'Please complete your payment at UniEDD Music & Arts Academy.',
+      }),
     })
+    const sendData = await sendRes.json()
 
-    // Get payer link
+    // Step 4: Fetch invoice to get activated payer link
     const detailRes = await fetch(`https://api-m.paypal.com/v2/invoicing/invoices/${invoiceId}`, {
-      headers: { 'Authorization': `Bearer ${tokenData.access_token}` },
+      headers: { 'Authorization': `Bearer ${token}` },
     })
     const detail = await detailRes.json()
 
+    // Try all possible link fields
     const payerLink =
-      detail.detail?.metadata?.payer_view_url ||
+      detail.detail?.metadata?.payer_view_url       ||
       detail.links?.find(l => l.rel === 'payer-view')?.href ||
       `https://www.paypal.com/invoice/p/#${invoiceId}`
 
@@ -108,7 +113,7 @@ module.exports = async function handler(req, res) {
       invoiceId,
       amount:      usdAmount,
       currency:    'USD',
-      type:        'invoice',
+      status:      detail.status,
     })
 
   } catch (err) {
