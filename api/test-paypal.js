@@ -20,7 +20,7 @@ module.exports = async function handler(req, res) {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token.access_token}` },
       body: JSON.stringify({
         detail: { invoice_number:`TEST-${Date.now()}`, invoice_date:new Date().toISOString().slice(0,10), currency_code:'USD', payment_term:{ term_type:'DUE_ON_RECEIPT' } },
-        invoicer: { name:{ given_name:'UniEDD', surname:'Academy' }, email_address:'unieddllp@gmail.com' },
+        invoicer: { name:{ given_name:'UniEDD', surname:'Academy' }, email_address:'kum4r.p1yush@gmail.com' },
         primary_recipients: [{ billing_info: { name:{ given_name:'Test', surname:'Student' } } }],
         items: [{ name:'Guitar Class', quantity:'1', unit_amount:{ currency_code:'USD', value:'60.00' }, unit_of_measure:'QUANTITY' }],
         amount: { breakdown: { item_total:{ currency_code:'USD', value:'60.00' } } },
