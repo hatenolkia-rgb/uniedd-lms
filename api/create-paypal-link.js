@@ -44,7 +44,7 @@ module.exports = async function handler(req, res) {
         },
         invoicer: {
           name:          { given_name: 'UniEDD', surname: 'Academy' },
-          email_address: 'kum4r.p1yush@gmail.com',
+          // email hidden from invoice
         },
         primary_recipients: [{
           billing_info: {
