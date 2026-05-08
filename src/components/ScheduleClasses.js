@@ -10,20 +10,22 @@ export default function ScheduleClasses({ profile }) {
   const [ok,        setOk]        = useState('')
   const [err,       setErr]       = useState('')
   const [preview,   setPreview]   = useState([])
-  const [mode,      setMode]      = useState('single')  // single | bulk
+  const [mode,      setMode]      = useState('single')
+  const [zoomStatus,setZoomStatus]= useState('')  // generating | done | error
 
   // Form
-  const [selStudent,  setSelStudent]  = useState('')
-  const [selTeacher,  setSelTeacher]  = useState('')
-  const [selCourse,   setSelCourse]   = useState('')
-  const [title,       setTitle]       = useState('')
-  const [startDate,   setStartDate]   = useState('')
-  const [startTime,   setStartTime]   = useState('')
-  const [zoomLink,    setZoomLink]    = useState('')
-  const [batch,       setBatch]       = useState('')
-  const [totalClasses,setTotalClasses]= useState(72)
-  const [weekDays,    setWeekDays]    = useState([1]) // 0=Sun,1=Mon...6=Sat
-  const [classesPerWeek, setClassesPerWeek] = useState(2)
+  const [selStudent,   setSelStudent]   = useState('')
+  const [selTeacher,   setSelTeacher]   = useState('')
+  const [selCourse,    setSelCourse]    = useState('')
+  const [title,        setTitle]        = useState('')
+  const [startDate,    setStartDate]    = useState('')
+  const [startTime,    setStartTime]    = useState('')
+  const [zoomLink,     setZoomLink]     = useState('')
+  const [autoZoom,     setAutoZoom]     = useState(true)
+  const [batch,        setBatch]        = useState('')
+  const [totalClasses, setTotalClasses] = useState(72)
+  const [weekDays,     setWeekDays]     = useState([1])
+  const [duration,     setDuration]     = useState(60)
 
   useEffect(() => { loadData() }, [])
 
@@ -36,8 +38,6 @@ export default function ScheduleClasses({ profile }) {
     setStudents(s || [])
     setTeachers(t || [])
     setCourses(c || [])
-
-    // Auto-fill teacher if logged in as teacher
     if (profile.role === 'teacher') setSelTeacher(profile.id)
   }
 
@@ -49,38 +49,55 @@ export default function ScheduleClasses({ profile }) {
     )
   }
 
-  // Generate preview of all class dates
   function generateDates(start, days, total) {
     if (!start || !days.length || !total) return []
     const dates = []
     let current = new Date(start)
     current.setHours(0,0,0,0)
-
     while (dates.length < total) {
-      if (days.includes(current.getDay())) {
-        dates.push(new Date(current))
-      }
+      if (days.includes(current.getDay())) dates.push(new Date(current))
       current.setDate(current.getDate() + 1)
-      if (dates.length >= total * 3) break // safety
+      if (dates.length >= total * 3) break
     }
     return dates.slice(0, total)
   }
 
-  function updatePreview() {
-    if (!startDate || !weekDays.length || !totalClasses) { setPreview([]); return }
-    const dates = generateDates(startDate, weekDays, totalClasses)
-    setPreview(dates)
-  }
+  useEffect(() => {
+    if (mode === 'bulk') setPreview(generateDates(startDate, weekDays, totalClasses))
+    else setPreview([])
+  }, [startDate, weekDays, totalClasses, mode])
 
-  useEffect(() => { updatePreview() }, [startDate, weekDays, totalClasses])
+  // Auto-generate a single Zoom meeting and return the join URL
+  async function generateZoomLink(topic, date, time) {
+    try {
+      setZoomStatus('generating')
+      const res = await fetch('/api/create-zoom-meeting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, date, time, durationMinutes: duration }),
+      })
+      const data = await res.json()
+      if (data.success && data.joinUrl) {
+        setZoomStatus('done')
+        return data.joinUrl
+      } else {
+        setZoomStatus('error')
+        console.error('Zoom error:', data)
+        return null
+      }
+    } catch (e) {
+      setZoomStatus('error')
+      return null
+    }
+  }
 
   async function scheduleClasses(e) {
     e.preventDefault()
-    setErr(''); setOk(''); setBusy(true)
+    setErr(''); setOk(''); setBusy(true); setZoomStatus('')
 
-    if (!title.trim())     { setErr('Enter class title.'); setBusy(false); return }
-    if (!startDate)        { setErr('Select start date.'); setBusy(false); return }
-    if (!weekDays.length)  { setErr('Select at least one day of week.'); setBusy(false); return }
+    if (!title.trim())    { setErr('Enter class title.'); setBusy(false); return }
+    if (!startDate)       { setErr('Select start date.'); setBusy(false); return }
+    if (mode === 'bulk' && !weekDays.length) { setErr('Select at least one day of week.'); setBusy(false); return }
 
     const teacher  = teachers.find(t => t.id === selTeacher)
     const student  = students.find(s => s.id === selStudent)
@@ -88,6 +105,18 @@ export default function ScheduleClasses({ profile }) {
     const dates    = mode === 'bulk' ? generateDates(startDate, weekDays, totalClasses) : [new Date(startDate)]
 
     try {
+      // Auto-generate Zoom link if enabled
+      // For bulk: one recurring Zoom link is generated from the first class (same link for all classes)
+      let finalZoomLink = zoomLink.trim() || null
+      if (autoZoom) {
+        const generatedLink = await generateZoomLink(
+          title.trim(),
+          startDate,
+          startTime || null
+        )
+        if (generatedLink) finalZoomLink = generatedLink
+      }
+
       // Create all class records
       const classRecords = dates.map((d, i) => ({
         title:        title.trim() + (mode === 'bulk' ? ` (Class ${i+1}/${dates.length})` : ''),
@@ -96,14 +125,12 @@ export default function ScheduleClasses({ profile }) {
         class_date:   d.toISOString().slice(0,10),
         start_time:   startTime || null,
         batch:        batch || course?.title || null,
-        meet_link:    zoomLink.trim() || null,
+        meet_link:    finalZoomLink,
         created_by:   profile.full_name,
       }))
 
       const { data: insertedClasses, error } = await supabase
-        .from('classes')
-        .insert(classRecords)
-        .select()
+        .from('classes').insert(classRecords).select()
 
       if (error) throw new Error(error.message)
 
@@ -118,7 +145,7 @@ export default function ScheduleClasses({ profile }) {
       }
 
       // Add to events/calendar
-      const events = dates.map((d, i) => ({
+      const events = dates.map(d => ({
         title:        title.trim(),
         event_type:   'class',
         day:          d.getDate(),
@@ -130,7 +157,7 @@ export default function ScheduleClasses({ profile }) {
       }))
       await supabase.from('events').insert(events)
 
-      // Send email to student
+      // Email student
       if (selStudent && student?.email) {
         const firstDate = dates[0]?.toISOString().slice(0,10)
         sendEmail('class_scheduled', student.email, {
@@ -139,22 +166,26 @@ export default function ScheduleClasses({ profile }) {
           classDate:   mode === 'bulk' ? `${firstDate} + ${dates.length - 1} more classes` : firstDate,
           startTime:   startTime || null,
           teacherName: teacher?.full_name || null,
-          zoomLink:    zoomLink.trim() || null,
+          zoomLink:    finalZoomLink,
         })
       }
 
-      const msg = mode === 'bulk'
-        ? `✓ ${dates.length} classes scheduled${selStudent ? ` and added to ${student?.full_name}'s calendar` : ''}!`
-        : `✓ Class scheduled${selStudent ? ` for ${student?.full_name}` : ''}!`
-      setOk(msg)
+      const zoomMsg = finalZoomLink
+        ? autoZoom ? ' · 🔗 Zoom link auto-generated!' : ' · 🔗 Zoom link saved'
+        : ''
+      setOk(
+        mode === 'bulk'
+          ? `✓ ${dates.length} classes scheduled${selStudent ? ` for ${student?.full_name}` : ''}!${zoomMsg}`
+          : `✓ Class scheduled${selStudent ? ` for ${student?.full_name}` : ''}!${zoomMsg}`
+      )
 
       // Reset
       setTitle(''); setStartDate(''); setStartTime(''); setZoomLink('')
-      setBatch(''); setSelStudent(''); setPreview([])
+      setBatch(''); setSelStudent(''); setPreview([]); setZoomStatus('')
 
     } catch(e) { setErr('Error: ' + e.message) }
     setBusy(false)
-    setTimeout(() => setOk(''), 6000)
+    setTimeout(() => setOk(''), 8000)
   }
 
   const inp = { width:'100%', background:'rgba(255,255,255,0.05)', border:'0.5px solid rgba(255,255,255,0.1)', borderRadius:'10px', padding:'11px 13px', fontSize:'14px', color:'rgba(255,255,255,0.85)', outline:'none', fontFamily:'inherit', boxSizing:'border-box' }
@@ -166,29 +197,27 @@ export default function ScheduleClasses({ profile }) {
 
       {/* Mode selector */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'20px' }}>
-        <button onClick={() => setMode('single')} style={{ padding:'14px', borderRadius:'12px', border:`1.5px solid ${mode==='single'?'#1e90ff':'rgba(255,255,255,0.08)'}`, background:mode==='single'?'rgba(30,144,255,0.12)':'rgba(255,255,255,0.03)', cursor:'pointer', textAlign:'left' }}>
-          <div style={{ fontSize:'22px', marginBottom:'6px' }}>📌</div>
-          <div style={{ fontSize:'13px', fontWeight:700, color:mode==='single'?'#fff':'rgba(255,255,255,0.5)' }}>Single Class</div>
-          <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.3)', marginTop:'3px' }}>Schedule one class at a time</div>
-        </button>
-        <button onClick={() => setMode('bulk')} style={{ padding:'14px', borderRadius:'12px', border:`1.5px solid ${mode==='bulk'?'#8b5cf6':'rgba(255,255,255,0.08)'}`, background:mode==='bulk'?'rgba(139,92,246,0.12)':'rgba(255,255,255,0.03)', cursor:'pointer', textAlign:'left' }}>
-          <div style={{ fontSize:'22px', marginBottom:'6px' }}>📆</div>
-          <div style={{ fontSize:'13px', fontWeight:700, color:mode==='bulk'?'#fff':'rgba(255,255,255,0.5)' }}>Bulk — Full Course</div>
-          <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.3)', marginTop:'3px' }}>Schedule all classes for entire course</div>
-        </button>
+        {[
+          { id:'single', icon:'📌', label:'Single Class',       sub:'One class at a time',             color:'#1e90ff' },
+          { id:'bulk',   icon:'📆', label:'Bulk — Full Course', sub:'All classes for entire course',    color:'#8b5cf6' },
+        ].map(m => (
+          <button key={m.id} onClick={() => setMode(m.id)} style={{ padding:'14px', borderRadius:'12px', border:`1.5px solid ${mode===m.id?m.color:'rgba(255,255,255,0.08)'}`, background:mode===m.id?`${m.color}18`:'rgba(255,255,255,0.03)', cursor:'pointer', textAlign:'left' }}>
+            <div style={{ fontSize:'22px', marginBottom:'6px' }}>{m.icon}</div>
+            <div style={{ fontSize:'13px', fontWeight:700, color:mode===m.id?'#fff':'rgba(255,255,255,0.5)' }}>{m.label}</div>
+            <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.3)', marginTop:'3px' }}>{m.sub}</div>
+          </button>
+        ))}
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px' }}>
 
-        {/* ── LEFT — Form ── */}
+        {/* LEFT — Form */}
         <div style={{ background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.07)', borderRadius:'14px', padding:'1.2rem' }}>
-
           <form onSubmit={scheduleClasses}>
-            {/* Title */}
+
             <label style={lbl}>Class Title *</label>
             <input style={inp} type="text" placeholder="e.g. Guitar — Batch A" value={title} onChange={e=>setTitle(e.target.value)} required />
 
-            {/* Teacher */}
             {profile.role !== 'teacher' && (
               <>
                 <label style={lbl}>Assign Teacher</label>
@@ -199,21 +228,18 @@ export default function ScheduleClasses({ profile }) {
               </>
             )}
 
-            {/* Student (optional) */}
             <label style={lbl}>Assign Student (optional)</label>
             <select style={inp} value={selStudent} onChange={e=>setSelStudent(e.target.value)}>
-              <option value="">— Select student (optional) —</option>
+              <option value="">— Select student —</option>
               {students.map(s=><option key={s.id} value={s.id}>{s.full_name}</option>)}
             </select>
 
-            {/* Course */}
             <label style={lbl}>Course (optional)</label>
             <select style={inp} value={selCourse} onChange={e=>setSelCourse(e.target.value)}>
               <option value="">— Link to course —</option>
               {courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
 
-            {/* Start date + time */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
               <div>
                 <label style={lbl}>{mode==='bulk'?'Course Start Date':'Class Date'} *</label>
@@ -225,18 +251,43 @@ export default function ScheduleClasses({ profile }) {
               </div>
             </div>
 
-            {/* Zoom link */}
-            <label style={lbl}>Zoom Link (optional)</label>
-            <input style={inp} type="url" placeholder="https://zoom.us/j/..." value={zoomLink} onChange={e=>setZoomLink(e.target.value)} />
+            <label style={lbl}>Class Duration</label>
+            <select style={inp} value={duration} onChange={e=>setDuration(parseInt(e.target.value))}>
+              {[30,45,60,90,120].map(d=><option key={d} value={d}>{d} minutes</option>)}
+            </select>
 
-            {/* Batch */}
+            {/* Zoom options */}
+            <div style={{ marginTop:'14px', padding:'14px', background:'rgba(30,144,255,0.06)', border:'0.5px solid rgba(30,144,255,0.2)', borderRadius:'12px' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px' }}>
+                <div style={{ fontSize:'12px', fontWeight:700, color:'#5aabff' }}>🔗 Zoom Meeting</div>
+                <button type="button" onClick={() => setAutoZoom(!autoZoom)} style={{ fontSize:'11px', fontWeight:700, padding:'4px 10px', borderRadius:'20px', border:'none', cursor:'pointer', background:autoZoom?'#1e90ff':'rgba(255,255,255,0.1)', color:autoZoom?'#fff':'rgba(255,255,255,0.5)', fontFamily:'inherit' }}>
+                  {autoZoom ? '⚡ Auto-Generate ON' : '⚡ Auto-Generate OFF'}
+                </button>
+              </div>
+
+              {autoZoom ? (
+                <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.4)', lineHeight:1.5 }}>
+                  A Zoom meeting will be <strong style={{ color:'#5aabff' }}>automatically created</strong> when you schedule the class.
+                  {mode === 'bulk' && <span> One Zoom link is shared across all {preview.length || totalClasses} classes.</span>}
+                  {zoomStatus === 'generating' && <div style={{ marginTop:'6px', color:'#5aabff' }}>⏳ Generating Zoom link...</div>}
+                  {zoomStatus === 'done'       && <div style={{ marginTop:'6px', color:'#10b981' }}>✓ Zoom link created!</div>}
+                  {zoomStatus === 'error'      && <div style={{ marginTop:'6px', color:'#f87171' }}>⚠ Zoom failed — classes will be saved without a link.</div>}
+                </div>
+              ) : (
+                <>
+                  <label style={{ ...lbl, marginTop:0 }}>Manual Zoom Link</label>
+                  <input style={inp} type="url" placeholder="https://zoom.us/j/..." value={zoomLink} onChange={e=>setZoomLink(e.target.value)} />
+                </>
+              )}
+            </div>
+
             <label style={lbl}>Batch / Group (optional)</label>
             <input style={inp} type="text" placeholder="e.g. Batch A, Beginners" value={batch} onChange={e=>setBatch(e.target.value)} />
 
-            {/* BULK options */}
+            {/* Bulk settings */}
             {mode === 'bulk' && (
               <div style={{ marginTop:'14px', padding:'14px', background:'rgba(139,92,246,0.08)', border:'0.5px solid rgba(139,92,246,0.2)', borderRadius:'12px' }}>
-                <div style={{ fontSize:'12px', fontWeight:700, color:'#a78bfa', marginBottom:'12px', letterSpacing:'0.05em' }}>📆 BULK SCHEDULE SETTINGS</div>
+                <div style={{ fontSize:'12px', fontWeight:700, color:'#a78bfa', marginBottom:'12px' }}>📆 BULK SCHEDULE SETTINGS</div>
 
                 <label style={{ ...lbl, marginTop:0 }}>Total Number of Classes</label>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'6px', marginBottom:'10px' }}>
@@ -250,10 +301,10 @@ export default function ScheduleClasses({ profile }) {
                 <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'14px' }}>
                   <input type="number" min="1" max="365" value={totalClasses} onChange={e=>setTotalClasses(parseInt(e.target.value)||1)}
                     style={{ ...inp, width:'80px', padding:'8px 10px', fontSize:'13px' }} />
-                  <span style={{ fontSize:'12px', color:'rgba(255,255,255,0.4)' }}>custom number</span>
+                  <span style={{ fontSize:'12px', color:'rgba(255,255,255,0.4)' }}>custom</span>
                 </div>
 
-                <label style={{ ...lbl, marginTop:0 }}>Repeat on these days every week</label>
+                <label style={{ ...lbl, marginTop:0 }}>Repeat on days every week</label>
                 <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'10px' }}>
                   {DAY_NAMES.map((d,i) => (
                     <button key={i} type="button" onClick={() => toggleDay(i)}
@@ -265,12 +316,10 @@ export default function ScheduleClasses({ profile }) {
 
                 {preview.length > 0 && (
                   <div style={{ fontSize:'12px', color:'rgba(255,255,255,0.4)', marginTop:'8px' }}>
-                    <span style={{ color:'#a78bfa', fontWeight:700 }}>{preview.length} classes</span> from{' '}
-                    <span style={{ color:'rgba(255,255,255,0.7)' }}>{preview[0]?.toLocaleDateString('en-IN')}</span> to{' '}
-                    <span style={{ color:'rgba(255,255,255,0.7)' }}>{preview[preview.length-1]?.toLocaleDateString('en-IN')}</span>
-                    {startTime && <span> at {startTime}</span>}
-                    <span style={{ display:'block', marginTop:'4px', color:'rgba(255,255,255,0.3)' }}>
-                      Every {weekDays.map(d => DAY_NAMES[d]).join(' & ')}
+                    <span style={{ color:'#a78bfa', fontWeight:700 }}>{preview.length} classes</span> ·{' '}
+                    {preview[0]?.toLocaleDateString('en-IN')} → {preview[preview.length-1]?.toLocaleDateString('en-IN')}
+                    <span style={{ display:'block', marginTop:'3px', color:'rgba(255,255,255,0.3)' }}>
+                      Every {weekDays.map(d => DAY_NAMES[d]).join(' & ')} {startTime && `at ${startTime}`}
                     </span>
                   </div>
                 )}
@@ -282,7 +331,7 @@ export default function ScheduleClasses({ profile }) {
 
             <button type="submit" disabled={busy} style={{ width:'100%', padding:'13px', background:busy?'rgba(100,100,100,0.3)':mode==='bulk'?'linear-gradient(135deg,#8b5cf6,#6d28d9)':'linear-gradient(135deg,#1e90ff,#0ea5e9)', color:'#fff', fontSize:'14px', fontWeight:800, border:'none', borderRadius:'10px', cursor:busy?'not-allowed':'pointer', marginTop:'14px', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}>
               {busy
-                ? <><span style={{ display:'inline-block', width:'14px', height:'14px', border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'#fff', borderRadius:'50%', animation:'spin .7s linear infinite' }}/> Scheduling...</>
+                ? <><span style={{ display:'inline-block', width:'14px', height:'14px', border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'#fff', borderRadius:'50%', animation:'spin .7s linear infinite' }}/> {zoomStatus==='generating'?'Generating Zoom...':'Scheduling...'}</>
                 : mode === 'bulk'
                   ? `📆 Schedule All ${preview.length || totalClasses} Classes`
                   : '📌 Schedule Class'
@@ -291,7 +340,7 @@ export default function ScheduleClasses({ profile }) {
           </form>
         </div>
 
-        {/* ── RIGHT — Preview ── */}
+        {/* RIGHT — Preview */}
         <div style={{ background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.07)', borderRadius:'14px', padding:'1.2rem' }}>
           <div style={{ fontSize:'13px', fontWeight:700, color:'rgba(255,255,255,0.7)', marginBottom:'12px' }}>
             {mode === 'bulk' ? `📋 Preview — ${preview.length} Classes` : '📋 Summary'}
@@ -305,25 +354,36 @@ export default function ScheduleClasses({ profile }) {
                 { label:'Student', value: students.find(s=>s.id===selStudent)?.full_name || 'Not assigned' },
                 { label:'Date',    value: startDate || '—' },
                 { label:'Time',    value: startTime || '—' },
-                { label:'Zoom',    value: zoomLink ? '✓ Link added' : 'No link yet' },
+                { label:'Duration',value: `${duration} min` },
+                { label:'Zoom',    value: autoZoom ? '⚡ Auto-generate' : zoomLink ? '✓ Manual link' : 'No link' },
               ].map(row => (
                 <div key={row.label} style={{ display:'flex', justifyContent:'space-between', padding:'8px 10px', background:'rgba(255,255,255,0.03)', borderRadius:'8px' }}>
                   <span style={{ fontSize:'12px', color:'rgba(255,255,255,0.4)' }}>{row.label}</span>
                   <span style={{ fontSize:'12px', color:'rgba(255,255,255,0.8)', fontWeight:500 }}>{row.value}</span>
                 </div>
               ))}
+
+              {/* Zoom badge */}
+              <div style={{ padding:'12px', background:'rgba(30,144,255,0.08)', border:'0.5px solid rgba(30,144,255,0.2)', borderRadius:'10px', marginTop:'4px', textAlign:'center' }}>
+                <div style={{ fontSize:'20px', marginBottom:'4px' }}>🔗</div>
+                <div style={{ fontSize:'12px', fontWeight:700, color:autoZoom?'#5aabff':'rgba(255,255,255,0.4)' }}>
+                  {autoZoom ? 'Zoom auto-generates on schedule' : 'No auto Zoom link'}
+                </div>
+                <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.3)', marginTop:'3px' }}>
+                  {autoZoom ? 'A real meeting link will be created via Zoom API' : 'Add link manually or turn on Auto-Generate'}
+                </div>
+              </div>
             </div>
           ) : preview.length === 0 ? (
             <div style={{ textAlign:'center', padding:'3rem 1rem', color:'rgba(255,255,255,0.2)', fontSize:'13px' }}>
-              Select start date and days to see preview
+              Select start date and days to preview
             </div>
           ) : (
             <>
-              {/* Stats */}
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'8px', marginBottom:'14px' }}>
                 {[
-                  { label:'Total', value: preview.length, color:'#a78bfa' },
-                  { label:'Weeks', value: Math.ceil(preview.length / weekDays.length), color:'#5aabff' },
+                  { label:'Total',   value: preview.length, color:'#a78bfa' },
+                  { label:'Weeks',   value: Math.ceil(preview.length / weekDays.length), color:'#5aabff' },
                   { label:'Days/wk', value: weekDays.length, color:'#10b981' },
                 ].map(s => (
                   <div key={s.label} style={{ background:'rgba(255,255,255,0.04)', borderRadius:'10px', padding:'10px', textAlign:'center' }}>
@@ -333,8 +393,14 @@ export default function ScheduleClasses({ profile }) {
                 ))}
               </div>
 
-              {/* Class list */}
-              <div style={{ maxHeight:'380px', overflowY:'auto', display:'grid', gap:'3px' }}>
+              {/* Zoom note for bulk */}
+              <div style={{ padding:'10px 12px', background:'rgba(30,144,255,0.08)', border:'0.5px solid rgba(30,144,255,0.2)', borderRadius:'10px', marginBottom:'12px', fontSize:'11px', color:'rgba(255,255,255,0.5)', lineHeight:1.5 }}>
+                🔗 {autoZoom
+                  ? `One Zoom meeting will be auto-created. The same join link will be used for all ${preview.length} classes.`
+                  : 'Auto-generate is off. You can add a Zoom link manually or turn it on.'}
+              </div>
+
+              <div style={{ maxHeight:'320px', overflowY:'auto', display:'grid', gap:'3px' }}>
                 {preview.map((d, i) => (
                   <div key={i} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'6px 10px', background:'rgba(255,255,255,0.03)', borderRadius:'7px' }}>
                     <span style={{ fontSize:'10px', fontWeight:700, padding:'2px 7px', borderRadius:'6px', background:'rgba(139,92,246,0.15)', color:'#a78bfa', flexShrink:0 }}>#{i+1}</span>
