@@ -40,6 +40,7 @@ export default function App() {
     if (!data) {
       const user = (await supabase.auth.getUser()).data.user
       const meta = user?.user_metadata || {}
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'
       const res = await supabase
         .from('profiles')
         .insert({
@@ -47,6 +48,7 @@ export default function App() {
           email:     user.email,
           full_name: meta.full_name || user.email.split('@')[0],
           role:      meta.role || 'student',
+          timezone:  userTimezone,
         })
         .select()
         .single()
@@ -54,6 +56,13 @@ export default function App() {
       // New user — send welcome email
       if (data?.email) {
         sendEmail('welcome', data.email, { name: data.full_name || 'there' })
+      }
+    }
+    // Update timezone on every login (user may travel or it may have changed)
+    if (data) {
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'
+      if (data.timezone !== userTimezone) {
+        supabase.from('profiles').update({ timezone: userTimezone }).eq('id', data.id).then(() => {})
       }
     }
     setProfile(data)
