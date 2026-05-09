@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { supabase } from '../supabaseClient'
+import ProfilePhoto from './ProfilePhoto'
 
 const ROLES = {
   admin:   { label:'Admin',   color:'#e87c1e', bg:'rgba(232,124,30,0.15)', border:'rgba(232,124,30,0.3)', accent:'#e87c1e' },
@@ -71,8 +72,7 @@ function NavIcon({ type, size = 16 }) {
 }
 
 function SidebarLayout({ profile, navItems, activeTab, onNavClick, portalLabel, children }) {
-  const cfg      = ROLES[profile.role] || ROLES.student
-  const initials = (profile.full_name || profile.email || 'U').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()
+  const cfg = ROLES[profile.role] || ROLES.student
 
   return (
     <div style={{ minHeight:'100vh', background:'#0c1118', display:'flex' }}>
@@ -190,7 +190,6 @@ export default function Layout({ profile, pageTitle, children, activeTab, onTabC
 
   // Student: keep simple top-nav (no sidebar needed)
   const cfg      = ROLES[role] || ROLES.student
-  const initials = (profile.full_name || profile.email || 'U').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()
 
   return (
     <div style={{ minHeight:'100vh', background:'#0c1118' }}>
@@ -204,7 +203,7 @@ export default function Layout({ profile, pageTitle, children, activeTab, onTabC
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
           <span style={{ fontSize:'10px', padding:'3px 10px', borderRadius:'20px', fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', background:cfg.bg, color:cfg.color, border:`0.5px solid ${cfg.border}` }}>{cfg.label}</span>
-          <div style={{ width:'32px', height:'32px', borderRadius:'50%', background:cfg.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:800, color:'#fff' }}>{initials}</div>
+          <ProfilePhoto profile={profile} size={32} />
           <button onClick={() => { const el=document.getElementById('uniedd-calendar'); if(el) el.scrollIntoView({behavior:'smooth'}) }} style={{ fontSize:'12px', color:'rgba(255,255,255,0.5)', background:'rgba(30,144,255,0.1)', border:'0.5px solid rgba(30,144,255,0.2)', borderRadius:'6px', padding:'5px 11px', cursor:'pointer', fontFamily:'inherit' }}>📅 Calendar</button>
           <button onClick={() => { const el=document.getElementById('uniedd-resources'); if(el) el.scrollIntoView({behavior:'smooth'}) }} style={{ fontSize:'12px', color:'rgba(255,255,255,0.5)', background:'rgba(16,185,129,0.1)', border:'0.5px solid rgba(16,185,129,0.2)', borderRadius:'6px', padding:'5px 11px', cursor:'pointer', fontFamily:'inherit' }}>📚 Resources</button>
           <button onClick={() => supabase.auth.signOut()} style={{ fontSize:'12px', color:'rgba(255,255,255,0.4)', background:'none', border:'0.5px solid rgba(255,255,255,0.1)', borderRadius:'6px', padding:'5px 11px', cursor:'pointer', fontFamily:'inherit' }}>Sign out</button>

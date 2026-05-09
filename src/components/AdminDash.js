@@ -9,6 +9,7 @@ import RevenueChart from './RevenueChart'
 import EnrolStudent from './EnrolStudent'
 import ScheduleClasses from './ScheduleClasses'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Row, Pill, Empty, Lbl, Inp, Btn, Err, Ok } from './Layout'
+import { sendEmail } from '../emailService'
 
 const SOURCE_COLOR = {
   'Google Ads':    { bg:'rgba(66,133,244,0.15)',  c:'#4285f4' },
@@ -68,6 +69,35 @@ export default function AdminDash({ profile }) {
     setLoading(false)
   }
 
+  async function deleteUser(id, name) {
+    if (!window.confirm(`Delete user "${name}"? This cannot be undone.`)) return
+    await supabase.from('profiles').delete().eq('id', id)
+    load()
+  }
+
+  async function deleteClass(id, title) {
+    if (!window.confirm(`Delete class "${title}"?`)) return
+    await supabase.from('classes').delete().eq('id', id)
+    await supabase.from('events').delete().eq('title', title)
+    load()
+  }
+
+  async function sendFeeReminder(studentId, studentName, studentEmail, courseName, amount, currency) {
+    if (!studentEmail) return alert('No email for this student.')
+    // sendEmail imported at top
+    const sym = (currency === 'INR' || !currency) ? '₹' : '$'
+    await sendEmail('fee_reminder', studentEmail, {
+      name: studentName,
+      courseName: courseName || 'Your course',
+      amount: amount || 0,
+      currency: currency || 'INR',
+      paymentLink: null,
+      invoiceNo: 'REMINDER-' + Date.now().toString().slice(-6),
+      dueDate: null,
+    })
+    alert(`✓ Fee reminder sent to ${studentName}`)
+  }
+
   async function changeRole(id, role) {
     await supabase.from('profiles').update({ role }).eq('id', id)
     load()
@@ -105,6 +135,8 @@ export default function AdminDash({ profile }) {
           { id:'leads',    label:'📋 All Leads'   },
           { id:'adleads',  label:'📣 From Ads'    },
           { id:'users',    label:'👥 Users'       },
+          { id:'classes',   label:'📅 Classes'     },
+          { id:'feereminder', label:'🔔 Fee Reminders' },
         ].map(item => (
           <button key={item.id} onClick={() => setActiveSection(item.id)} style={{
             fontSize:'12px', fontWeight:600, padding:'7px 14px', borderRadius:'10px',
@@ -287,9 +319,56 @@ export default function AdminDash({ profile }) {
                     <option value="sales">Sales</option>
                     <option value="admin">Admin</option>
                   </select>
+                  {u.role !== 'admin' && (
+                    <button onClick={() => deleteUser(u.id, u.full_name || u.email)} style={{ fontSize:'11px', fontWeight:700, padding:'5px 10px', borderRadius:'8px', border:'none', cursor:'pointer', background:'rgba(239,68,68,0.12)', color:'#f87171', fontFamily:'inherit', flexShrink:0 }}>
+                      🗑 Delete
+                    </button>
+                  )}
                 </div>
               ))}
           </Panel>
+        </>
+      )}
+
+      {/* ── CLASSES ── */}
+      {activeSection === 'classes' && (
+        <>
+          <PageHeader title="Manage Classes" subtitle="View and delete scheduled classes." />
+          <Panel>
+            {loading ? <Empty msg="Loading..." /> : classes.length === 0 ? <Empty msg="No classes scheduled yet." /> :
+              <div style={{ display:'grid', gap:'8px' }}>
+                {classes.map(c => (
+                  <div key={c.id} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 12px', background:'rgba(255,255,255,0.03)', borderRadius:'10px', borderLeft:`3px solid ${new Date(c.class_date) >= new Date(new Date().toISOString().slice(0,10)) ? '#1e90ff' : 'rgba(255,255,255,0.1)'}` }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:'13px', fontWeight:600, color:'rgba(255,255,255,0.85)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.title}</div>
+                      <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.35)', marginTop:'2px' }}>
+                        {c.class_date} {c.start_time && `· ${c.start_time}`}
+                        {c.teacher_name && ` · 👨‍🏫 ${c.teacher_name}`}
+                        {c.batch && ` · ${c.batch}`}
+                      </div>
+                    </div>
+                    {c.meet_link && (
+                      <a href={c.meet_link} target="_blank" rel="noreferrer" style={{ fontSize:'10px', fontWeight:700, padding:'4px 10px', borderRadius:'8px', background:'rgba(30,144,255,0.12)', color:'#5aabff', textDecoration:'none', flexShrink:0 }}>🔗 Zoom</a>
+                    )}
+                    <span style={{ fontSize:'9px', fontWeight:700, padding:'3px 8px', borderRadius:'10px', flexShrink:0, background: new Date(c.class_date) >= new Date(new Date().toISOString().slice(0,10)) ? 'rgba(30,144,255,0.15)' : 'rgba(255,255,255,0.05)', color: new Date(c.class_date) >= new Date(new Date().toISOString().slice(0,10)) ? '#5aabff' : 'rgba(255,255,255,0.3)' }}>
+                      {new Date(c.class_date) >= new Date(new Date().toISOString().slice(0,10)) ? 'Upcoming' : 'Done'}
+                    </span>
+                    <button onClick={() => deleteClass(c.id, c.title)} style={{ fontSize:'11px', fontWeight:700, padding:'5px 10px', borderRadius:'8px', border:'none', cursor:'pointer', background:'rgba(239,68,68,0.12)', color:'#f87171', fontFamily:'inherit', flexShrink:0 }}>
+                      🗑 Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            }
+          </Panel>
+        </>
+      )}
+
+      {/* ── FEE REMINDERS ── */}
+      {activeSection === 'feereminder' && (
+        <>
+          <PageHeader title="Fee Reminders" subtitle="Send reminder emails to students with pending payments." />
+          <FeeReminderSection sendFeeReminder={sendFeeReminder} />
         </>
       )}
 
@@ -371,6 +450,119 @@ function BulkUploadAdmin({ profile }) {
             <Btn busy={uploading} style={{ marginTop:'8px' }} onClick={uploadLeads}>Upload {preview.length > 0 ? `${preview.length} Leads` : 'Leads'}</Btn>
           </>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ── Fee Reminder Section ────────────────────────────────────────────────────
+function FeeReminderSection({ sendFeeReminder }) {
+  const [payments,  setPayments]  = React.useState([])
+  const [loading,   setLoading]   = React.useState(true)
+  const [sent,      setSent]      = React.useState({})
+  const [filter,    setFilter]    = React.useState('pending')
+
+  React.useEffect(() => {
+    async function load() {
+      const { data } = await supabase.from('payments')
+        .select('*')
+        .in('status', ['pending','overdue'])
+        .order('created_at', { ascending: false })
+      setPayments(data || [])
+      setLoading(false)
+    }
+    load()
+  }, [])
+
+  async function remind(p) {
+    setSent(s => ({ ...s, [p.id]: 'sending' }))
+    await sendFeeReminder(p.student_id, p.student_name, p.student_email, p.course_name, p.amount, p.currency)
+    setSent(s => ({ ...s, [p.id]: 'sent' }))
+    setTimeout(() => setSent(s => ({ ...s, [p.id]: null })), 4000)
+  }
+
+  async function remindAll() {
+    const eligible = payments.filter(p => p.student_email)
+    if (!eligible.length) return alert('No students with email addresses found.')
+    if (!window.confirm(`Send fee reminders to ${eligible.length} students?`)) return
+    for (const p of eligible) await remind(p)
+  }
+
+  const sym = c => (c === 'INR' || !c) ? '₹' : '$'
+  const statusColor = { pending:'#f4a335', overdue:'#f87171' }
+
+  if (loading) return <div style={{ textAlign:'center', padding:'3rem', color:'rgba(255,255,255,0.2)', fontSize:'13px' }}>Loading...</div>
+  if (!payments.length) return (
+    <div style={{ textAlign:'center', padding:'3rem 1rem', background:'rgba(255,255,255,0.03)', borderRadius:'14px', border:'0.5px solid rgba(255,255,255,0.07)' }}>
+      <div style={{ fontSize:'36px', marginBottom:'12px' }}>🎉</div>
+      <div style={{ fontSize:'14px', color:'rgba(255,255,255,0.5)' }}>No pending payments — all fees are cleared!</div>
+    </div>
+  )
+
+  return (
+    <div>
+      {/* Summary + bulk action */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'14px', flexWrap:'wrap', gap:'10px' }}>
+        <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
+          <div style={{ padding:'8px 14px', borderRadius:'12px', background:'rgba(244,163,53,0.1)', fontSize:'12px', fontWeight:700, color:'#f4a335' }}>
+            ⏳ {payments.filter(p=>p.status==='pending').length} Pending
+          </div>
+          <div style={{ padding:'8px 14px', borderRadius:'12px', background:'rgba(248,113,113,0.1)', fontSize:'12px', fontWeight:700, color:'#f87171' }}>
+            🚨 {payments.filter(p=>p.status==='overdue').length} Overdue
+          </div>
+          <div style={{ padding:'8px 14px', borderRadius:'12px', background:'rgba(255,255,255,0.05)', fontSize:'12px', fontWeight:700, color:'rgba(255,255,255,0.5)' }}>
+            💰 Total Due: ₹{payments.reduce((a,p)=>a+(p.amount||0),0).toLocaleString('en-IN')}
+          </div>
+        </div>
+        <button onClick={remindAll} style={{ padding:'9px 18px', background:'linear-gradient(135deg,#f4a335,#ef4444)', color:'#fff', fontSize:'13px', fontWeight:700, border:'none', borderRadius:'10px', cursor:'pointer', fontFamily:'inherit' }}>
+          🔔 Send All Reminders ({payments.filter(p=>p.student_email).length})
+        </button>
+      </div>
+
+      {/* Payments list */}
+      <div style={{ display:'grid', gap:'8px' }}>
+        {payments.map(p => (
+          <div key={p.id} style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', background:'rgba(255,255,255,0.03)', borderRadius:'12px', border:`0.5px solid ${statusColor[p.status]||'rgba(255,255,255,0.07)'}33` }}>
+            {/* Avatar */}
+            <div style={{ width:'36px', height:'36px', borderRadius:'50%', flexShrink:0, background:'rgba(244,163,53,0.15)', color:'#f4a335', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px', fontWeight:800 }}>
+              {(p.student_name||'?').charAt(0).toUpperCase()}
+            </div>
+
+            {/* Info */}
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:'13px', fontWeight:600, color:'rgba(255,255,255,0.85)' }}>{p.student_name || '—'}</div>
+              <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.35)', marginTop:'2px' }}>
+                {p.student_email || '⚠ No email'} · {p.course_name || 'Course'}
+                {p.due_date && ` · Due: ${p.due_date}`}
+              </div>
+              {p.invoice_no && <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.2)', marginTop:'1px' }}>{p.invoice_no}</div>}
+            </div>
+
+            {/* Amount */}
+            <div style={{ textAlign:'right', flexShrink:0 }}>
+              <div style={{ fontSize:'16px', fontWeight:800, color:statusColor[p.status]||'#fff' }}>
+                {sym(p.currency)}{(p.amount||0).toLocaleString('en-IN')}
+              </div>
+              <span style={{ fontSize:'9px', fontWeight:700, padding:'2px 8px', borderRadius:'10px', background:`${statusColor[p.status]||'#888'}18`, color:statusColor[p.status]||'#aaa', textTransform:'uppercase' }}>
+                {p.status}
+              </span>
+            </div>
+
+            {/* Remind button */}
+            <button
+              onClick={() => remind(p)}
+              disabled={!p.student_email || sent[p.id] === 'sending'}
+              style={{ fontSize:'11px', fontWeight:700, padding:'7px 14px', borderRadius:'9px', border:'none', cursor: p.student_email ? 'pointer' : 'not-allowed', fontFamily:'inherit', flexShrink:0, transition:'all 0.2s',
+                background: sent[p.id] === 'sent' ? 'rgba(16,185,129,0.15)' : !p.student_email ? 'rgba(255,255,255,0.04)' : 'rgba(244,163,53,0.15)',
+                color:      sent[p.id] === 'sent' ? '#34d399'               : !p.student_email ? 'rgba(255,255,255,0.2)'   : '#f4a335',
+              }}>
+              {sent[p.id] === 'sending' ? '⏳ Sending...' : sent[p.id] === 'sent' ? '✓ Sent!' : !p.student_email ? 'No email' : '🔔 Remind'}
+            </button>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.2)', textAlign:'center', marginTop:'12px' }}>
+        Reminder emails include student name, course, amount due, and payment link if available.
       </div>
     </div>
   )
