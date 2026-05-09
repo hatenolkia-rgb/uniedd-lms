@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { sendEmail } from './emailService'
+import { initActivityLogger, logPageView } from './activityLogger'
 import LoginPage   from './components/LoginPage'
 import AdminDash   from './components/AdminDash'
 import TeacherDash from './components/TeacherDash'
@@ -67,6 +68,8 @@ export default function App() {
     }
     setProfile(data)
     setLoading(false)
+    // Start activity tracking
+    if (data) initActivityLogger(data)
   }
 
   if (loading) return (
