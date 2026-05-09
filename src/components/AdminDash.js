@@ -8,6 +8,7 @@ import Resources from './Resources'
 import RevenueChart from './RevenueChart'
 import EnrolStudent from './EnrolStudent'
 import ScheduleClasses from './ScheduleClasses'
+import ActivityLog from './ActivityLog'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Row, Pill, Empty, Lbl, Inp, Btn, Err, Ok } from './Layout'
 import { sendEmail } from '../emailService'
 
@@ -111,7 +112,7 @@ export default function AdminDash({ profile }) {
   const newLeads = leads.filter(l => l.status === 'New')
   const adLeads  = leads.filter(l => l.source && ['Google Ads','Facebook Ads','Instagram Ads','Landing Page'].includes(l.source))
 
-  const sel = { background:'rgba(255,255,255,0.07)', border:'0.5px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.7)', borderRadius:'6px', padding:'4px 8px', fontSize:'11px', cursor:'pointer', outline:'none' }
+  const sel = { background:'#1a2535', border:'0.5px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.7)', borderRadius:'6px', padding:'4px 8px', fontSize:'11px', cursor:'pointer', outline:'none' }
   const STATUSES = ['New','Contacted','Demo Scheduled','Enrolled','Lost']
 
   return (
@@ -137,6 +138,7 @@ export default function AdminDash({ profile }) {
           { id:'users',    label:'👥 Users'       },
           { id:'classes',   label:'📅 Classes'     },
           { id:'feereminder', label:'🔔 Fee Reminders' },
+          { id:'activitylog',  label:'📊 Activity Log'  },
         ].map(item => (
           <button key={item.id} onClick={() => setActiveSection(item.id)} style={{
             fontSize:'12px', fontWeight:600, padding:'7px 14px', borderRadius:'10px',
@@ -369,6 +371,14 @@ export default function AdminDash({ profile }) {
         <>
           <PageHeader title="Fee Reminders" subtitle="Send reminder emails to students with pending payments." />
           <FeeReminderSection sendFeeReminder={sendFeeReminder} />
+        </>
+      )}
+
+      {/* ── ACTIVITY LOG ── */}
+      {activeSection === 'activitylog' && (
+        <>
+          <PageHeader title="User Activity Log" subtitle="Track logins, sessions and time spent by every user." />
+          <ActivityLog />
         </>
       )}
 
