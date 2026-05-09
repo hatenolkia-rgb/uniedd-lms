@@ -94,9 +94,7 @@ function SidebarLayout({ profile, navItems, activeTab, onNavClick, portalLabel, 
 
         {/* User card */}
         <div style={{ padding:'14px 16px', borderBottom:'0.5px solid rgba(255,255,255,0.06)', display:'flex', alignItems:'center', gap:'10px' }}>
-          <div style={{ width:'34px', height:'34px', borderRadius:'50%', background:cfg.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px', fontWeight:800, color:'#fff', flexShrink:0, letterSpacing:'-0.02em' }}>
-            {initials}
-          </div>
+          <ProfilePhoto profile={profile} size={34} />
           <div style={{ minWidth:0 }}>
             <div style={{ fontSize:'13px', fontWeight:600, color:'rgba(255,255,255,0.85)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', lineHeight:1.2 }}>
               {profile.full_name || profile.email}
