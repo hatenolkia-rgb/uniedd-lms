@@ -5,6 +5,7 @@ import Resources from './Resources'
 import Attendance from './Attendance'
 import Layout, { PageHeader, Grid4, MetricCard, TwoCol, Panel, Lbl, Inp, Btn, Err, Ok, Empty, ZoomBtn } from './Layout'
 import ScheduleClasses from './ScheduleClasses'
+import ZoomRecordings from './ZoomRecordings'
 
 export default function TeacherDash({ profile }) {
   const [tab,      setTab]      = useState('classes')
@@ -293,6 +294,7 @@ export default function TeacherDash({ profile }) {
         </>
       )}
       <ScheduleClasses profile={profile} />
+      <ZoomRecordings profile={profile} />
     </Layout>
   )
 }
