@@ -4,7 +4,6 @@ import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Lbl, Inp, Btn, Er
 import { sendEmail } from '../emailService'
 import EnrolStudent from './EnrolStudent'
 import ScheduleClasses from './ScheduleClasses'
-import MarketingHub from './MarketingHub'
 import PaymentsAdmin from './PaymentsAdmin'
 import Calendar from './Calendar'
 import Resources from './Resources'
@@ -28,7 +27,6 @@ export default function SalesDash({ profile }) {
       {tab === 'enrol'    && <EnrolSection   profile={profile} />}
       {tab === 'payment'  && <PaymentSection  profile={profile} />}
       {tab === 'scheduleclasses' && <ScheduleClasssSection profile={profile} />}
-      {tab === 'marketing' && <MarketingSection profile={profile} />}
       {tab === 'newclass' && <ScheduleClassSection profile={profile} />}
       {tab === 'classes'  && <ClassesSection />}
       {tab === 'invoice'  && <InvoiceSection profile={profile} />}
@@ -524,15 +522,6 @@ function InvoiceSection({ profile }) {
 
 
 // ── SCHEDULE CLASS (Sales can create classes) ───────────────
-function MarketingSection({ profile }) {
-  return (
-    <>
-      <PageHeader title="Marketing Hub" subtitle="Ads analytics, content calendar and social posting." />
-      <MarketingHub profile={profile} />
-    </>
-  )
-}
-
 function ScheduleClasssSection({ profile }) {
   return (
     <>
