@@ -60,7 +60,7 @@ module.exports = async function handler(req, res) {
           join_before_host:   true,       // Students can join before teacher
           mute_upon_entry:    true,
           waiting_room:       false,
-          auto_recording:     'none',
+          auto_recording:     'cloud',  // Auto-record to Zoom cloud
           approval_type:      0,          // Automatically approve
         },
       }),
