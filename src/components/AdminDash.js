@@ -9,6 +9,7 @@ import RevenueChart from './RevenueChart'
 import EnrolStudent from './EnrolStudent'
 import ScheduleClasses from './ScheduleClasses'
 import ActivityLog from './ActivityLog'
+import MarketingHub from './MarketingHub'
 import ZoomRecordings from './ZoomRecordings'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Row, Pill, Empty, Lbl, Inp, Btn, Err, Ok } from './Layout'
 import { sendEmail } from '../emailService'
@@ -141,6 +142,7 @@ export default function AdminDash({ profile }) {
           { id:'feereminder', label:'🔔 Fee Reminders' },
           { id:'activitylog',  label:'📊 Activity Log'  },
           { id:'recordings',   label:'🎬 Recordings'     },
+          { id:'marketing',    label:'🚀 Marketing'      },
         ].map(item => (
           <button key={item.id} onClick={() => setActiveSection(item.id)} style={{
             fontSize:'12px', fontWeight:600, padding:'7px 14px', borderRadius:'10px',
@@ -388,6 +390,13 @@ export default function AdminDash({ profile }) {
         <>
           <PageHeader title="Zoom Recordings" subtitle="All cloud recordings from Zoom classes." />
           <ZoomRecordings profile={profile} />
+        </>
+      )}
+
+      {activeSection === 'marketing' && (
+        <>
+          <PageHeader title="Marketing Hub" subtitle="Meta Ads, content calendar, social posting and asset library." />
+          <MarketingHub profile={profile} />
         </>
       )}
 
