@@ -5,6 +5,7 @@ import Resources from './Resources'
 import Attendance from './Attendance'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Empty, ZoomBtn } from './Layout'
 import ZoomRecordings from './ZoomRecordings'
+import RescheduleManager from './RescheduleManager'
 
 export default function StudentDash({ profile }) {
   const [classes,     setClasses]     = useState([])   // only enrolled classes
@@ -308,6 +309,7 @@ export default function StudentDash({ profile }) {
       <Calendar  profile={profile} />
       <Resources profile={profile} />
       <ZoomRecordings profile={profile} />
+      <RescheduleManager profile={profile} />
     </Layout>
   )
 }

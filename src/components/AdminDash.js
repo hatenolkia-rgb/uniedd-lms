@@ -13,6 +13,7 @@ import MarketingHub from './MarketingHub'
 import ZoomRecordings from './ZoomRecordings'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Row, Pill, Empty, Lbl, Inp, Btn, Err, Ok } from './Layout'
 import { sendEmail } from '../emailService'
+import RescheduleManager from './RescheduleManager'
 
 const SOURCE_COLOR = {
   'Google Ads':    { bg:'rgba(66,133,244,0.15)',  c:'#4285f4' },
@@ -139,6 +140,7 @@ export default function AdminDash({ profile }) {
           { id:'adleads',  label:'📣 From Ads'    },
           { id:'users',    label:'👥 Users'       },
           { id:'classes',   label:'📅 Classes'     },
+          { id:'reschedule',  label:'↺ Reschedule'   },
           { id:'feereminder', label:'🔔 Fee Reminders' },
           { id:'activitylog',  label:'📊 Activity Log'  },
           { id:'recordings',   label:'🎬 Recordings'     },
@@ -390,6 +392,13 @@ export default function AdminDash({ profile }) {
         <>
           <PageHeader title="Zoom Recordings" subtitle="All cloud recordings from Zoom classes." />
           <ZoomRecordings profile={profile} />
+        </>
+      )}
+
+      {activeSection === 'reschedule' && (
+        <>
+          <PageHeader title="Reschedule & Cancellations" subtitle="Manage class changes and student requests." />
+          <RescheduleManager profile={profile} />
         </>
       )}
 
