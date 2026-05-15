@@ -8,6 +8,16 @@ import ScheduleClasses from './ScheduleClasses'
 import ZoomRecordings from './ZoomRecordings'
 import RescheduleManager from './RescheduleManager'
 
+function isZoomVisible(classDate, startTime, role) {
+  if (role === 'admin') return true
+  if (!classDate) return false
+  try {
+    const classIST = new Date(`${classDate}T${startTime||'00:00'}:00+05:30`)
+    const diffHrs  = (classIST - new Date()) / 3600000
+    return diffHrs <= 24 && diffHrs >= -2
+  } catch(e) { return false }
+}
+
 export default function TeacherDash({ profile }) {
   const [tab,      setTab]      = useState('classes')
   const [classes,  setClasses]  = useState([])   // only THIS teacher's classes

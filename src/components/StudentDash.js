@@ -7,6 +7,15 @@ import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Empty, ZoomBtn } 
 import ZoomRecordings from './ZoomRecordings'
 import RescheduleManager from './RescheduleManager'
 
+function isZoomVisible(classDate, startTime) {
+  if (!classDate) return false
+  try {
+    const classIST = new Date(`${classDate}T${startTime||'00:00'}:00+05:30`)
+    const diffHrs  = (classIST - new Date()) / 3600000
+    return diffHrs <= 24 && diffHrs >= -2
+  } catch(e) { return false }
+}
+
 export default function StudentDash({ profile }) {
   const [classes,     setClasses]     = useState([])   // only enrolled classes
   const [enrollments, setEnrollments] = useState([])

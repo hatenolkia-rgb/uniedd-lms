@@ -9,6 +9,8 @@ import RevenueChart from './RevenueChart'
 import EnrolStudent from './EnrolStudent'
 import ScheduleClasses from './ScheduleClasses'
 import ActivityLog from './ActivityLog'
+import BatchResetTool from './BatchResetTool'
+import BulkCancel from './BulkCancel'
 import MarketingHub from './MarketingHub'
 import ZoomRecordings from './ZoomRecordings'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Row, Pill, Empty, Lbl, Inp, Btn, Err, Ok } from './Layout'
@@ -141,6 +143,8 @@ export default function AdminDash({ profile }) {
           { id:'users',    label:'👥 Users'       },
           { id:'classes',   label:'📅 Classes'     },
           { id:'reschedule',  label:'↺ Reschedule'   },
+          { id:'batchreset',   label:'🔄 Batch Reset'   },
+          { id:'bulkcancel',   label:'🚫 Bulk Cancel'   },
           { id:'feereminder', label:'🔔 Fee Reminders' },
           { id:'activitylog',  label:'📊 Activity Log'  },
           { id:'recordings',   label:'🎬 Recordings'     },
@@ -399,6 +403,20 @@ export default function AdminDash({ profile }) {
         <>
           <PageHeader title="Reschedule & Cancellations" subtitle="Manage class changes and student requests." />
           <RescheduleManager profile={profile} />
+        </>
+      )}
+
+      {activeSection === 'bulkcancel' && (
+        <>
+          <PageHeader title="Bulk Cancel Classes" subtitle="Cancel multiple classes by student name, teacher name, or both." />
+          <BulkCancel />
+        </>
+      )}
+
+      {activeSection === 'batchreset' && (
+        <>
+          <PageHeader title="Batch Reset & Regenerate" subtitle="Delete future classes for a student and regenerate fresh ones without sending emails." />
+          <BatchResetTool />
         </>
       )}
 

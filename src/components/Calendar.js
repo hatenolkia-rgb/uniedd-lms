@@ -45,6 +45,23 @@ function formatTZLabel(tz) {
   } catch(e) { return tz }
 }
 
+// ── Zoom link visibility: only show 24hrs before class ──────────────────────
+function isZoomVisible(classDate, startTime, userRole) {
+  // Admin always sees the link
+  if (userRole === 'admin') return true
+  if (!classDate) return false
+  try {
+    const classTime = startTime || '00:00'
+    // Parse class datetime in IST
+    const classIST = new Date(`${classDate}T${classTime}:00+05:30`)
+    const now       = new Date()
+    const diffMs    = classIST.getTime() - now.getTime()
+    const diffHrs   = diffMs / (1000 * 60 * 60)
+    // Show link only if class is within 24 hours from now (and not more than 2hrs past)
+    return diffHrs <= 24 && diffHrs >= -2
+  } catch(e) { return false }
+}
+
 // ── Main Calendar ───────────────────────────────────────────────────────────
 
 export default function Calendar({ profile }) {
@@ -329,9 +346,13 @@ export default function Calendar({ profile }) {
                       </div>
                     </div>
                     {ev.meet_link && (
-                      <a href={ev.meet_link} target="_blank" rel="noreferrer" style={{ fontSize:'11px', fontWeight:700, padding:'5px 12px', borderRadius:'8px', background:'rgba(30,144,255,0.15)', color:'#5aabff', border:'0.5px solid rgba(30,144,255,0.25)', whiteSpace:'nowrap', textDecoration:'none', flexShrink:0 }}>
-                        🔗 Join Zoom
-                      </a>
+                      isZoomVisible(ev._localDate || ev.class_date, ev.start_time, profile.role)
+                        ? <a href={ev.meet_link} target="_blank" rel="noreferrer" style={{ fontSize:'11px', fontWeight:700, padding:'5px 12px', borderRadius:'8px', background:'rgba(30,144,255,0.15)', color:'#5aabff', border:'0.5px solid rgba(30,144,255,0.25)', whiteSpace:'nowrap', textDecoration:'none', flexShrink:0 }}>
+                            🔗 Join Zoom
+                          </a>
+                        : <span style={{ fontSize:'10px', padding:'5px 10px', borderRadius:'8px', background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.25)', whiteSpace:'nowrap', flexShrink:0 }}>
+                            🔒 Link available 24h before
+                          </span>
                     )}
                   </div>
                 )
