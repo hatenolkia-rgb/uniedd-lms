@@ -106,7 +106,7 @@ export default function Calendar({ profile }) {
 
     } else if (profile.role === 'teacher') {
       const { data } = await supabase.from('classes').select('*')
-        .eq('teacher_id', profile.id)
+        .eq('teacher_id', profile.id).eq('is_cancelled', false)
         .gte('class_date', startDate).lte('class_date', endDate)
         .order('class_date')
       cls = data || []
@@ -118,7 +118,7 @@ export default function Calendar({ profile }) {
       const classIds = (enrollments || []).map(e => e.class_id).filter(Boolean)
       if (classIds.length > 0) {
         const { data } = await supabase.from('classes').select('*')
-          .in('id', classIds)
+          .in('id', classIds).eq('is_cancelled', false)
           .gte('class_date', startDate).lte('class_date', endDate)
           .order('class_date')
         cls = data || []

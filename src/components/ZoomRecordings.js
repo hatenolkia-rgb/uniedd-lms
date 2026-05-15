@@ -147,7 +147,7 @@ export default function ZoomRecordings({ profile }) {
       } else if (profile.role === 'teacher') {
         const { data: cls } = await supabase.from('classes')
           .select('id,title,meet_link,class_date')
-          .eq('teacher_id', profile.id).not('meet_link','is',null)
+          .eq('teacher_id', profile.id).eq('is_cancelled', false).not('meet_link','is',null)
           .lte('class_date', new Date().toISOString().slice(0,10))
           .order('class_date', { ascending: false })
         meetingIds = (cls||[]).map(c => c.meet_link?.match(/\/j\/(\d+)/)?.[1]).filter(Boolean)

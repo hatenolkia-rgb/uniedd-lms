@@ -550,7 +550,7 @@ function ScheduleClassSection({ profile }) {
   async function loadData() {
     const [{ data: t }, { data: c }] = await Promise.all([
       supabase.from('profiles').select('id,full_name').eq('role','teacher'),
-      supabase.from('classes').select('*').order('class_date',{ascending:false}).limit(10),
+      supabase.from('classes').select('*').eq('is_cancelled', false).order('class_date',{ascending:false}).limit(10),
     ])
     setTeachers(t||[]); setClasses(c||[])
   }
