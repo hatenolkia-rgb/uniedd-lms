@@ -18,13 +18,24 @@ const ROLE_PORTAL = {
 
 const NAV_ITEMS = {
   admin: [
-    { id:'uniedd-top',            icon:'chart',   label:'Overview'  },
-    { id:'uniedd-manage-users',   icon:'users',   label:'Users'     },
-    { id:'uniedd-payments',       icon:'card',    label:'Payments'  },
-  { id:'uniedd-bulk-upload',     icon:'upload',  label:'Bulk Upload'},
-    { id:'uniedd-manage-courses', icon:'courses', label:'Courses'   },
-    { id:'uniedd-calendar',       icon:'cal',     label:'Calendar'  },
-    { id:'uniedd-resources',      icon:'book',    label:'Resources' },
+    { id:'overview',    icon:'chart',   label:'Overview',      group:'OVERVIEW'  },
+    { id:'leads',       icon:'leads',   label:'All Leads',     group:'LEADS'     },
+    { id:'adleads',     icon:'funnel',  label:'From Ads',      group:'LEADS'     },
+    { id:'users',       icon:'users',   label:'Users & Roles', group:'STUDENTS'  },
+    { id:'enrol',       icon:'check',   label:'Enrol Student', group:'STUDENTS'  },
+    { id:'payments',    icon:'card',    label:'Payments',      group:'STUDENTS'  },
+    { id:'feereminder', icon:'invoice', label:'Fee Reminders', group:'STUDENTS'  },
+    { id:'classes',     icon:'cal',     label:'All Classes',   group:'CLASSES'   },
+    { id:'schedule',    icon:'video',   label:'Schedule Class',group:'CLASSES'   },
+    { id:'reschedule',  icon:'cal2',    label:'Reschedule',    group:'CLASSES'   },
+    { id:'batchreset',  icon:'users',   label:'Manage Student',group:'CLASSES'   },
+    { id:'bulkcancel',  icon:'upload',  label:'Bulk Cancel',   group:'CLASSES'   },
+    { id:'courses',     icon:'courses', label:'Courses',       group:'CONTENT'   },
+    { id:'resources',   icon:'book',    label:'Resources',     group:'CONTENT'   },
+    { id:'recordings',  icon:'play',    label:'Recordings',    group:'CONTENT'   },
+    { id:'calendar',    icon:'cal',     label:'Calendar',      group:'ANALYTICS' },
+    { id:'activitylog', icon:'chart',   label:'Activity Log',  group:'ANALYTICS' },
+    { id:'marketing',   icon:'funnel',  label:'Marketing',     group:'ANALYTICS' },
   ],
   teacher: [
     { id:'classes',    icon:'video',   label:'Classes'     },
@@ -106,8 +117,39 @@ function SidebarLayout({ profile, navItems, activeTab, onNavClick, portalLabel, 
         </div>
 
         {/* Nav */}
-        <nav style={{ padding:'10px 10px', flex:1 }}>
-          {navItems.map(item => {
+        <nav style={{ padding:'8px 8px', flex:1, overflowY:'auto' }}>
+          {/* Group items for admin, flat for others */}
+          {navItems[0]?.group ? (() => {
+            const groups = []
+            const seen = {}
+            navItems.forEach(item => {
+              if (!seen[item.group]) { seen[item.group] = true; groups.push({ name: item.group, items:[] }) }
+              groups[groups.length-1].items.push(item)
+            })
+            return groups.map(g => (
+              <div key={g.name}>
+                <div style={{ fontSize:'9px', fontWeight:800, color:'rgba(255,255,255,0.18)', letterSpacing:'0.12em', padding:'10px 8px 4px' }}>{g.name}</div>
+                {g.items.map(item => {
+                  const isActive = activeTab === item.id
+                  return (
+                    <button key={item.id} onClick={() => onNavClick(item.id)} style={{
+                      display:'flex', alignItems:'center', gap:'9px',
+                      width:'100%', padding:'8px 10px', borderRadius:'8px', border:'none', cursor:'pointer',
+                      fontFamily:'inherit', textAlign:'left', marginBottom:'1px', transition:'all 0.1s',
+                      background: isActive ? `${cfg.bg}` : 'transparent',
+                      color:      isActive ? cfg.color : 'rgba(255,255,255,0.38)',
+                      fontWeight: isActive ? 600 : 400,
+                      fontSize:  '12.5px',
+                      borderLeft: isActive ? `3px solid ${cfg.color}` : '3px solid transparent',
+                    }}>
+                      <NavIcon type={item.icon} size={14} />
+                      <span style={{ flex:1 }}>{item.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            ))
+          })() : navItems.map(item => {
             const isActive = activeTab === item.id
             return (
               <button key={item.id} onClick={() => onNavClick(item.id)} style={{
@@ -169,9 +211,8 @@ export default function Layout({ profile, pageTitle, children, activeTab, onTabC
       setInternalTab(id)
       // For admin: scroll-to sections. For others: tab switching handled by caller.
       if (role === 'admin') {
-        if (id === 'uniedd-top') { window.scrollTo({ top:0, behavior:'smooth' }); return }
-        const el = document.getElementById(id)
-        if (el) el.scrollIntoView({ behavior:'smooth', block:'start' })
+        // Admin uses activeSection state — handled by AdminDash via onTabChange prop
+        return
       }
     })
 

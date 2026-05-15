@@ -121,7 +121,7 @@ export default function AdminDash({ profile }) {
   const STATUSES = ['New','Contacted','Demo Scheduled','Enrolled','Lost']
 
   return (
-    <Layout profile={profile} pageTitle="Dashboard">
+    <Layout profile={profile} pageTitle="Dashboard" activeTab={activeSection} onTabChange={setActiveSection}>
       <PageHeader title="Platform Overview" subtitle="Live metrics — full admin access." />
 
       {/* ── METRIC CARDS ── */}
@@ -134,39 +134,8 @@ export default function AdminDash({ profile }) {
         <MetricCard icon="💰" label="Revenue"       value={`₹${(stats.revenue||0).toLocaleString('en-IN')}`} accentColor="#10b981" />
       </Grid4>
 
-      {/* ── QUICK NAV ── */}
-      <div style={{ display:'flex', gap:'8px', marginBottom:'16px', flexWrap:'wrap' }}>
-        {[
-          { id:'overview', label:'📊 Overview'    },
-          { id:'leads',    label:'📋 All Leads'   },
-          { id:'adleads',  label:'📣 From Ads'    },
-          { id:'users',    label:'👥 Users'       },
-          { id:'classes',   label:'📅 Classes'     },
-          { id:'reschedule',  label:'↺ Reschedule'   },
-          { id:'batchreset',   label:'🔄 Batch Reset'   },
-          { id:'bulkcancel',   label:'🚫 Bulk Cancel'   },
-          { id:'feereminder', label:'🔔 Fee Reminders' },
-          { id:'activitylog',  label:'📊 Activity Log'  },
-          { id:'recordings',   label:'🎬 Recordings'     },
-          { id:'marketing',    label:'🚀 Marketing'      },
-        ].map(item => (
-          <button key={item.id} onClick={() => setActiveSection(item.id)} style={{
-            fontSize:'12px', fontWeight:600, padding:'7px 14px', borderRadius:'10px',
-            border:'none', cursor:'pointer', fontFamily:'inherit',
-            background: activeSection===item.id ? '#1e90ff' : 'rgba(255,255,255,0.06)',
-            color:      activeSection===item.id ? '#fff'    : 'rgba(255,255,255,0.5)',
-            position:'relative',
-          }}>
-            {item.label}
-            {item.id==='leads' && stats.newLeads > 0 && (
-              <span style={{ position:'absolute', top:'-6px', right:'-6px', background:'#f4a335', color:'#000', fontSize:'9px', fontWeight:800, borderRadius:'10px', padding:'1px 5px' }}>{stats.newLeads}</span>
-            )}
-            {item.id==='adleads' && adLeads.filter(l=>l.status==='New').length > 0 && (
-              <span style={{ position:'absolute', top:'-6px', right:'-6px', background:'#ef4444', color:'#fff', fontSize:'9px', fontWeight:800, borderRadius:'10px', padding:'1px 5px' }}>{adLeads.filter(l=>l.status==='New').length}</span>
-            )}
-          </button>
-        ))}
-      </div>
+
+
 
       {/* ── OVERVIEW ── */}
       {activeSection === 'overview' && (
@@ -427,14 +396,45 @@ export default function AdminDash({ profile }) {
         </>
       )}
 
-      {/* Sections always rendered (anchor scroll for sidebar nav) */}
-      <EnrolStudent />
-      <ScheduleClasses profile={profile} />
-      <ManageUsers   profile={profile} />
-      <ManageCourses profile={profile} />
-      <PaymentsAdmin profile={profile} />
-      <Calendar      profile={profile} />
-      <Resources     profile={profile} />
+      {/* ── Additional sections ── */}
+      {activeSection === 'enrol' && (
+        <>
+          <PageHeader title="Enrol Student" subtitle="Enrol a student into a course." />
+          <EnrolStudent />
+        </>
+      )}
+      {activeSection === 'payments' && (
+        <>
+          <PageHeader title="Payments" subtitle="Manage invoices and payment records." />
+          <PaymentsAdmin profile={profile} />
+        </>
+      )}
+      {activeSection === 'schedule' && (
+        <>
+          <PageHeader title="Schedule Classes" subtitle="Schedule single or bulk classes." />
+          <ScheduleClasses profile={profile} />
+        </>
+      )}
+      {activeSection === 'courses' && (
+        <>
+          <PageHeader title="Courses" subtitle="Manage your course catalogue." />
+          <ManageCourses />
+        </>
+      )}
+      {activeSection === 'resources' && (
+        <>
+          <PageHeader title="Resources" subtitle="Upload and manage learning materials." />
+          <Resources profile={profile} />
+        </>
+      )}
+      {activeSection === 'calendar' && (
+        <>
+          <PageHeader title="Calendar" subtitle="Full platform calendar view." />
+          <Calendar profile={profile} />
+        </>
+      )}
+
+
     </Layout>
   )
 }
