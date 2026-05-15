@@ -55,13 +55,17 @@ module.exports = async function handler(req, res) {
         timezone:   'Asia/Kolkata',
         agenda:     `UniEDD Music & Arts Academy — ${topic}`,
         settings: {
-          host_video:        true,
-          participant_video:  true,
-          join_before_host:   true,       // Students can join before teacher
-          mute_upon_entry:    true,
-          waiting_room:       false,
-          auto_recording:     'cloud',  // Auto-record to Zoom cloud
-          approval_type:      0,          // Automatically approve
+          host_video:            true,
+          participant_video:      true,
+          join_before_host:       true,
+          mute_upon_entry:        true,
+          waiting_room:           false,
+          auto_recording:         'cloud',
+          approval_type:          2,      // No registration required
+          registration_type:      1,
+          enforce_login:          false,
+          meeting_authentication: false,  // No auth needed to join
+          close_registration:     false,
         },
       }),
     })
