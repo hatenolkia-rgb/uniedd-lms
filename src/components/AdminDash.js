@@ -16,6 +16,7 @@ import ZoomRecordings from './ZoomRecordings'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Row, Pill, Empty, Lbl, Inp, Btn, Err, Ok } from './Layout'
 import { sendEmail } from '../emailService'
 import RescheduleManager from './RescheduleManager'
+import ScheduleDemo, { ScheduleDemoModal } from './ScheduleDemo'
 
 const SOURCE_COLOR = {
   'Google Ads':    { bg:'rgba(66,133,244,0.15)',  c:'#4285f4' },
@@ -43,6 +44,7 @@ export default function AdminDash({ profile }) {
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeSection, setActiveSection] = useState('overview')
+  const [demoModal, setDemoModal] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -272,6 +274,9 @@ export default function AdminDash({ profile }) {
                   <select value={l.status||'New'} onChange={e => updateLeadStatus(l.id, e.target.value)} style={sel}>
                     {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
+                  <button onClick={() => setDemoModal(l)} style={{ fontSize:'11px', fontWeight:700, padding:'5px 10px', borderRadius:'8px', border:'none', cursor:'pointer', background:'rgba(139,92,246,0.15)', color:'#a78bfa', fontFamily:'inherit', flexShrink:0, whiteSpace:'nowrap' }}>
+                    🎯 Demo
+                  </button>
                 </div>
               ))
             )}
@@ -368,6 +373,13 @@ export default function AdminDash({ profile }) {
         </>
       )}
 
+      {activeSection === 'schedule-demo' && (
+        <>
+          <PageHeader title="Schedule Demo" subtitle="Book a free demo class for any lead or student." />
+          <ScheduleDemo profile={profile} />
+        </>
+      )}
+
       {activeSection === 'reschedule' && (
         <>
           <PageHeader title="Reschedule & Cancellations" subtitle="Manage class changes and student requests." />
@@ -435,6 +447,13 @@ export default function AdminDash({ profile }) {
       )}
 
 
+      {demoModal && (
+        <ScheduleDemoModal
+          lead={demoModal}
+          onClose={() => setDemoModal(null)}
+          onSaved={() => { setDemoModal(null); load() }}
+        />
+      )}
     </Layout>
   )
 }
