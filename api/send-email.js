@@ -6,6 +6,32 @@ const BRAND_COLOR     = '#1e90ff'
 const ACCENT_COLOR    = '#e87c1e'
 const APP_URL         = 'https://uniedd-lms.vercel.app'
 
+
+function feeReminderEmail(name, courseName, amount, currency, paymentLink, invoiceNo, dueDate) {
+  const sym = currency === 'INR' ? '₹' : '$'
+  return baseTemplate(`
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="display:inline-block;width:64px;height:64px;background:#fff7ed;border-radius:50%;line-height:64px;font-size:32px;">🔔</div>
+    </div>
+    <h1 style="margin:0 0 8px;font-size:22px;color:#0f172a;text-align:center;">Fee Reminder</h1>
+    <p style="color:#475569;font-size:15px;line-height:1.7;margin:0 0 20px;text-align:center;">Hi ${name}, this is a friendly reminder that your fee payment is due.</p>
+    <div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:12px;padding:20px 24px;margin-bottom:24px;">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        ${invoiceNo ? `<tr><td style="font-size:13px;color:#92400e;padding:5px 0;">Invoice</td><td style="font-size:13px;color:#0f172a;font-weight:600;text-align:right;">${invoiceNo}</td></tr>` : ''}
+        <tr><td style="font-size:13px;color:#92400e;padding:5px 0;">Course</td><td style="font-size:13px;color:#0f172a;font-weight:600;text-align:right;">${courseName}</td></tr>
+        <tr><td style="font-size:13px;color:#92400e;padding:5px 0;">Amount Due</td><td style="font-size:20px;color:#ea580c;font-weight:800;text-align:right;">${sym}${amount}</td></tr>
+        ${dueDate ? `<tr><td style="font-size:13px;color:#dc2626;padding:5px 0;">⚠️ Due Date</td><td style="font-size:13px;color:#dc2626;font-weight:700;text-align:right;">${dueDate}</td></tr>` : ''}
+      </table>
+    </div>
+    <p style="color:#64748b;font-size:13px;line-height:1.7;text-align:center;margin-bottom:20px;">Please complete your payment at the earliest to continue your classes without interruption.</p>
+    ${paymentLink ? `
+    <div style="text-align:center;margin-bottom:16px;">
+      <a href="${paymentLink}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#1877f2,#0ea5e9);color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;">💳 Pay Now →</a>
+    </div>` : `<p style="text-align:center;font-size:13px;color:#94a3b8;">Contact your coordinator for payment details.</p>`}
+    <p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:16px;">If you have already paid, please ignore this reminder.</p>
+  `, `Fee Reminder — ${courseName}`)
+}
+
 // ── HTML Email Base Template ─────────────────────────────────
 function baseTemplate(content, title) {
   return `<!DOCTYPE html>
@@ -118,15 +144,32 @@ function paymentReceiptEmail(name, courseName, amount, currency, invoiceNo, paid
   `, `Payment Receipt — ${invoiceNo}`)
 }
 
-function classScheduledEmail(name, classTitle, classDate, startTime, teacherName, zoomLink) {
+function convertISTtoLocal(date, time, targetTZ) {
+  if (!time || !targetTZ || targetTZ === 'Asia/Kolkata') return { localTime: time, localDate: date }
+  try {
+    const dt = new Date(`${date}T${time}:00+05:30`)
+    const localTime = dt.toLocaleTimeString('en-GB', { timeZone: targetTZ, hour:'2-digit', minute:'2-digit', hour12:false })
+    const localDate = dt.toLocaleDateString('en-GB', { timeZone: targetTZ, weekday:'long', day:'numeric', month:'long', year:'numeric' })
+    const tzName    = dt.toLocaleString('en', { timeZone: targetTZ, timeZoneName:'shortOffset' }).split(' ').pop()
+    return { localTime, localDate, tzName }
+  } catch(e) { return { localTime: time, localDate: date } }
+}
+
+function classScheduledEmail(name, classTitle, classDate, startTime, teacherName, zoomLink, studentTZ) {
+  // Convert IST to student's local timezone
+  const tz = studentTZ || 'Asia/Kolkata'
+  const local = startTime ? convertISTtoLocal(classDate, startTime, tz) : null
+  const showDual = local && local.localTime !== startTime && tz !== 'Asia/Kolkata'
+
   return baseTemplate(`
     <h1 style="margin:0 0 8px;font-size:22px;color:#0f172a;">Class Scheduled! 📅</h1>
     <p style="color:#475569;font-size:15px;line-height:1.7;margin:0 0 20px;">Hi ${name}, a new class has been scheduled for you:</p>
     <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:12px;padding:20px 24px;margin-bottom:24px;">
       <div style="font-size:18px;font-weight:800;color:#1d4ed8;margin-bottom:12px;">${classTitle}</div>
       <table width="100%" cellpadding="0" cellspacing="0">
-        <tr><td style="font-size:13px;color:#1e40af;padding:4px 0;">📅 Date</td><td style="font-size:13px;color:#0f172a;font-weight:600;text-align:right;">${classDate}</td></tr>
-        ${startTime ? `<tr><td style="font-size:13px;color:#1e40af;padding:4px 0;">⏰ Time</td><td style="font-size:13px;color:#0f172a;font-weight:600;text-align:right;">${startTime}</td></tr>` : ''}
+        <tr><td style="font-size:13px;color:#1e40af;padding:4px 0;">📅 Date</td><td style="font-size:13px;color:#0f172a;font-weight:600;text-align:right;">${local ? local.localDate : classDate}</td></tr>
+        ${local ? `<tr><td style="font-size:13px;color:#1e40af;padding:4px 0;">⏰ Your Time</td><td style="font-size:13px;color:#0f172a;font-weight:600;text-align:right;">${local.localTime}${local.tzName ? ' ' + local.tzName : ''}</td></tr>` : ''}
+        ${showDual ? `<tr><td style="font-size:13px;color:#94a3b8;padding:4px 0;">⏰ IST (India)</td><td style="font-size:12px;color:#94a3b8;text-align:right;">${startTime} IST</td></tr>` : ''}
         ${teacherName ? `<tr><td style="font-size:13px;color:#1e40af;padding:4px 0;">👨‍🏫 Teacher</td><td style="font-size:13px;color:#0f172a;font-weight:600;text-align:right;">${teacherName}</td></tr>` : ''}
       </table>
     </div>
@@ -193,6 +236,11 @@ module.exports = async function handler(req, res) {
         html    = paymentReceiptEmail(data.name, data.courseName, data.amount, data.currency, data.invoiceNo, data.paidDate)
         // Also notify admin
         await sendEmail(ADMIN_EMAIL, `Payment received — ${data.name} · ${data.invoiceNo}`, html)
+        break
+
+      case 'fee_reminder':
+        subject = `⏰ Fee Reminder — ${data.courseName} · ${data.invoiceNo}`
+        html    = feeReminderEmail(data.name, data.courseName, data.amount, data.currency, data.paymentLink, data.invoiceNo, data.dueDate)
         break
 
       case 'class_scheduled':
