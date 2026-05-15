@@ -20,6 +20,7 @@ const NAV_ITEMS = {
   admin: [
     { id:'overview',    icon:'chart',   label:'Overview',      group:'OVERVIEW'  },
     { id:'leads',       icon:'leads',   label:'All Leads',     group:'LEADS'     },
+    { id:'schedule-demo', icon:'play',  label:'Schedule Demo',  group:'LEADS'     },
     { id:'adleads',     icon:'funnel',  label:'From Ads',      group:'LEADS'     },
     { id:'users',       icon:'users',   label:'Users & Roles', group:'STUDENTS'  },
     { id:'enrol',       icon:'check',   label:'Enrol Student', group:'STUDENTS'  },

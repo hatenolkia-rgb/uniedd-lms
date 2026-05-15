@@ -218,6 +218,7 @@ export default function ScheduleClasses({ profile }) {
   }
 
   const inp = { width:'100%', background:'rgba(255,255,255,0.05)', border:'0.5px solid rgba(255,255,255,0.1)', borderRadius:'10px', padding:'11px 13px', fontSize:'14px', color:'rgba(255,255,255,0.85)', outline:'none', fontFamily:'inherit', boxSizing:'border-box' }
+  const sel = { ...inp, background:'#1a2535' }  // solid bg for <select> so options are readable
   const lbl = { display:'block', fontSize:'10px', fontWeight:700, color:'rgba(255,255,255,0.32)', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:'6px', marginTop:'14px' }
 
   // Live timezone preview
@@ -256,7 +257,7 @@ export default function ScheduleClasses({ profile }) {
             {profile.role !== 'teacher' && (
               <>
                 <label style={lbl}>Assign Teacher</label>
-                <select style={inp} value={selTeacher} onChange={e=>setSelTeacher(e.target.value)}>
+                <select style={sel} value={selTeacher} onChange={e=>setSelTeacher(e.target.value)}>
                   <option value="">— Select teacher —</option>
                   {teachers.map(t=><option key={t.id} value={t.id}>{t.full_name}</option>)}
                 </select>
@@ -264,13 +265,13 @@ export default function ScheduleClasses({ profile }) {
             )}
 
             <label style={lbl}>Assign Student (optional)</label>
-            <select style={inp} value={selStudent} onChange={e=>setSelStudent(e.target.value)}>
+            <select style={sel} value={selStudent} onChange={e=>setSelStudent(e.target.value)}>
               <option value="">— Select student —</option>
               {students.map(s=><option key={s.id} value={s.id}>{s.full_name} {s.timezone && s.timezone!=='Asia/Kolkata' ? `(${s.timezone.split('/').pop()})` : ''}</option>)}
             </select>
 
             <label style={lbl}>Course (optional)</label>
-            <select style={inp} value={selCourse} onChange={e=>setSelCourse(e.target.value)}>
+            <select style={sel} value={selCourse} onChange={e=>setSelCourse(e.target.value)}>
               <option value="">— Link to course —</option>
               {courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
@@ -291,7 +292,7 @@ export default function ScheduleClasses({ profile }) {
 
               {/* Timezone picker */}
               <label style={{ ...lbl, marginTop:0 }}>⏰ Time is entered in this timezone</label>
-              <select style={{ ...inp, fontSize:'13px' }} value={classTZ} onChange={e=>setClassTZ(e.target.value)}>
+              <select style={{ ...sel, fontSize:'13px' }} value={classTZ} onChange={e=>setClassTZ(e.target.value)}>
                 {TIMEZONES.map(tz => (
                   <option key={tz.value} value={tz.value}>{tz.label}</option>
                 ))}
@@ -328,7 +329,7 @@ export default function ScheduleClasses({ profile }) {
             </div>
 
             <label style={lbl}>Duration</label>
-            <select style={inp} value={duration} onChange={e=>setDuration(parseInt(e.target.value))}>
+            <select style={sel} value={duration} onChange={e=>setDuration(parseInt(e.target.value))}>
               {[30,45,60,90,120].map(d=><option key={d} value={d}>{d} minutes</option>)}
             </select>
 

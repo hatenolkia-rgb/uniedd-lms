@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Lbl, Inp, Btn, Err, Ok, Empty } from './Layout'
 import { sendEmail } from '../emailService'
 import EnrolStudent from './EnrolStudent'
+import ScheduleDemo from './ScheduleDemo'
 import ScheduleClasses from './ScheduleClasses'
 import PaymentsAdmin from './PaymentsAdmin'
 import Calendar from './Calendar'
@@ -23,7 +24,7 @@ export default function SalesDash({ profile }) {
       {tab === 'leads'    && <LeadsSection   profile={profile} />}
 
       {tab === 'funnel'   && <FunnelSection  />}
-      {tab === 'demo'     && <DemoSection    profile={profile} />}
+      {tab === 'demo'     && <ScheduleDemo   profile={profile} />}
       {tab === 'enrol'    && <EnrolSection   profile={profile} />}
       {tab === 'payment'  && <PaymentSection  profile={profile} />}
       {tab === 'scheduleclasses' && <ScheduleClasssSection profile={profile} />}

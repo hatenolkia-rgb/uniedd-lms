@@ -14,15 +14,19 @@ export default function BatchResetTool() {
   const [students,     setStudents]     = useState([])
   const [teachers,     setTeachers]     = useState([])
   const [courses,      setCourses]      = useState([])
-  const [keepStudent,  setKeepStudent]  = useState('')  // the ONE student to keep + regenerate
-  const [step,         setStep]         = useState(1)
-  const [preview,      setPreview]      = useState(null)
-  const [loadingPrev,  setLoadingPrev]  = useState(false)
-  const [busy,         setBusy]         = useState(false)
-  const [err,          setErr]          = useState('')
-  const [result,       setResult]       = useState(null)
 
-  // Regenerate form
+  // Step 1 — pick student
+  const [selStudent,   setSelStudent]   = useState('')
+  const [studentCls,   setStudentCls]   = useState([])  // all classes for student
+  const [loadingCls,   setLoadingCls]   = useState(false)
+
+  // Step 2 — select which to cancel
+  const [selected,     setSelected]     = useState(new Set())  // class ids to cancel
+  const [cancelBusy,   setCancelBusy]   = useState(false)
+  const [cancelDone,   setCancelDone]   = useState(0)
+
+  // Step 3 — optional regenerate
+  const [showRegen,    setShowRegen]    = useState(false)
   const [title,        setTitle]        = useState('')
   const [selTeacher,   setSelTeacher]   = useState('')
   const [selCourse,    setSelCourse]    = useState('')
@@ -31,15 +35,17 @@ export default function BatchResetTool() {
   const [totalClasses, setTotalClasses] = useState(24)
   const [weekDays,     setWeekDays]     = useState([1])
   const [genPreview,   setGenPreview]   = useState([])
+  const [regenBusy,    setRegenBusy]    = useState(false)
+  const [regenDone,    setRegenDone]    = useState(0)
+  const [err,          setErr]          = useState('')
+
+  const today = new Date().toISOString().slice(0,10)
 
   useEffect(() => { loadInit() }, [])
-
   useEffect(() => {
-    if (startDate && weekDays.length && totalClasses) {
+    if (startDate && weekDays.length && totalClasses)
       setGenPreview(generateDates(startDate, weekDays, totalClasses))
-    } else {
-      setGenPreview([])
-    }
+    else setGenPreview([])
   }, [startDate, weekDays, totalClasses])
 
   async function loadInit() {
@@ -53,92 +59,58 @@ export default function BatchResetTool() {
     setCourses(c || [])
   }
 
-  async function loadPreview() {
-    if (!keepStudent) return
-    setLoadingPrev(true); setErr('')
-    const today = new Date().toISOString().slice(0,10)
-
-    // Get ALL students except the kept one
-    const otherStudents = students.filter(s => s.id !== keepStudent)
-
-    // For each other student: find future unattended classes
-    let totalToDelete = 0
-    let breakdownOthers = []
-
-    for (const stu of otherStudents) {
-      const { data: enrols } = await supabase
-        .from('enrollments').select('class_id').eq('student_id', stu.id)
-      const classIds = (enrols||[]).map(e=>e.class_id).filter(Boolean)
-      if (!classIds.length) continue
-
-      // Get future classes (not attended)
-      const { data: futureCls } = await supabase
-        .from('classes').select('id,title,class_date')
-        .in('id', classIds)
-        .gte('class_date', today)
-        .order('class_date')
-
-      // Check which have NO attendance marked
-      let toDelete = []
-      for (const cls of (futureCls||[])) {
-        const { data: att } = await supabase
-          .from('attendance')
-          .select('id')
-          .eq('class_id', cls.id)
-          .eq('student_id', stu.id)
-          .limit(1)
-        if (!att || att.length === 0) toDelete.push(cls)
-      }
-
-      if (toDelete.length > 0) {
-        breakdownOthers.push({ student: stu, toDelete })
-        totalToDelete += toDelete.length
-      }
-    }
-
-    // For kept student: show their future classes (will stay)
-    const { data: keepEnrols } = await supabase
-      .from('enrollments').select('class_id').eq('student_id', keepStudent)
-    const keepClassIds = (keepEnrols||[]).map(e=>e.class_id).filter(Boolean)
-    let keepFuture = []
-    let keepPast   = []
-    if (keepClassIds.length) {
-      const { data: kCls } = await supabase
-        .from('classes').select('*').in('id', keepClassIds).order('class_date')
-      keepPast   = (kCls||[]).filter(c => c.class_date < today)
-      keepFuture = (kCls||[]).filter(c => c.class_date >= today)
-    }
-
-    setPreview({ breakdownOthers, totalToDelete, keepPast, keepFuture })
-    setLoadingPrev(false)
-    setStep(2)
+  async function loadStudentClasses(sid) {
+    setSelStudent(sid)
+    setStudentCls([])
+    setSelected(new Set())
+    setCancelDone(0)
+    setRegenDone(0)
+    setShowRegen(false)
+    if (!sid) return
+    setLoadingCls(true)
+    const { data: enrols } = await supabase
+      .from('enrollments').select('class_id').eq('student_id', sid)
+    const ids = (enrols||[]).map(e=>e.class_id).filter(Boolean)
+    if (!ids.length) { setStudentCls([]); setLoadingCls(false); return }
+    const { data: cls } = await supabase
+      .from('classes').select('*').in('id', ids)
+      .eq('is_cancelled', false).order('class_date')
+    setStudentCls(cls || [])
+    setLoadingCls(false)
   }
 
-  async function deleteOthersFutureClasses() {
-    if (!preview) return
-    setBusy(true); setErr('')
-    const today = new Date().toISOString().slice(0,10)
-    let deleted = 0
+  // Quick select helpers
+  function selectAll()        { setSelected(new Set(studentCls.map(c=>c.id))) }
+  function selectNone()       { setSelected(new Set()) }
+  function selectFuture()     { setSelected(new Set(studentCls.filter(c=>c.class_date>=today).map(c=>c.id))) }
+  function selectPast()       { setSelected(new Set(studentCls.filter(c=>c.class_date<today).map(c=>c.id))) }
+  function selectUnattended() {
+    // future + no attendance (we check locally — attendance status not loaded, so just future)
+    setSelected(new Set(studentCls.filter(c=>c.class_date>=today).map(c=>c.id)))
+  }
+  function toggleOne(id) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
-    for (const { student, toDelete } of preview.breakdownOthers) {
-      const ids = toDelete.map(c=>c.id)
-      // Remove enrollments
-      await supabase.from('enrollments').delete()
-        .eq('student_id', student.id).in('class_id', ids)
-
-      // Delete class records if no other students enrolled
-      for (const id of ids) {
-        const { data: others } = await supabase
-          .from('enrollments').select('id').eq('class_id', id)
-        if (!others || others.length === 0) {
-          await supabase.from('classes').delete().eq('id', id)
-        }
-      }
-      deleted += ids.length
-    }
-
-    setBusy(false)
-    setStep(3)
+  async function cancelSelected() {
+    if (!selected.size) return setErr('Select at least one class to cancel.')
+    setErr(''); setCancelBusy(true)
+    const ids = [...selected]
+    await supabase.from('classes').update({
+      is_cancelled:  true,
+      cancel_reason: 'Cancelled by admin',
+      cancelled_at:  new Date().toISOString(),
+    }).in('id', ids)
+    // Remove enrollments
+    await supabase.from('enrollments').delete().eq('student_id', selStudent).in('class_id', ids)
+    setCancelDone(ids.size || ids.length)
+    // Refresh list
+    await loadStudentClasses(selStudent)
+    setCancelBusy(false)
   }
 
   function generateDates(start, days, total) {
@@ -155,18 +127,16 @@ export default function BatchResetTool() {
     setWeekDays(prev => prev.includes(d) ? prev.filter(x=>x!==d) : [...prev,d].sort())
   }
 
-  async function regenerateClasses() {
-    if (!title.trim())       return setErr('Enter class title.')
-    if (!startDate)          return setErr('Select start date.')
-    if (!weekDays.length)    return setErr('Select at least one day.')
-    if (!genPreview.length)  return setErr('No dates generated.')
-    setBusy(true); setErr('')
-
+  async function regenerate() {
+    if (!title.trim())      return setErr('Enter class title.')
+    if (!startDate)         return setErr('Select start date.')
+    if (!weekDays.length)   return setErr('Select at least one day.')
+    if (!genPreview.length) return setErr('No dates generated.')
+    setErr(''); setRegenBusy(true)
     const teacher = teachers.find(t=>t.id===selTeacher)
     const course  = courses.find(c=>c.id===selCourse)
-
-    const classRecords = genPreview.map((d,i) => ({
-      title:        title.trim() + ` (Class ${i+1}/${genPreview.length})`,
+    const records = genPreview.map((d,i) => ({
+      title:        title.trim() + ` (${i+1}/${genPreview.length})`,
       teacher_id:   selTeacher || null,
       teacher_name: teacher?.full_name || null,
       class_date:   d.toISOString().slice(0,10),
@@ -174,303 +144,261 @@ export default function BatchResetTool() {
       batch:        course?.title || null,
       created_by:   'admin',
     }))
-
-    const { data: inserted, error } = await supabase.from('classes').insert(classRecords).select()
-    if (error) { setErr(error.message); setBusy(false); return }
-
-    // Enrol kept student only — NO email
+    const { data: inserted, error } = await supabase.from('classes').insert(records).select()
+    if (error) { setErr(error.message); setRegenBusy(false); return }
     if (inserted?.length) {
       await supabase.from('enrollments').insert(
-        inserted.map(c => ({
-          student_id: keepStudent,
-          class_id:   c.id,
-          course_id:  selCourse || null,
-        }))
+        inserted.map(c => ({ student_id: selStudent, class_id: c.id, course_id: selCourse||null }))
       )
-
-      // Add to events/calendar silently
       await supabase.from('events').insert(
         genPreview.map(d => ({
-          title:        title.trim(),
-          event_type:   'class',
-          day:          d.getDate(),
-          month:        d.getMonth() + 1,
-          year:         d.getFullYear(),
-          time:         startTime || null,
-          teacher_name: teacher?.full_name || null,
-          batch:        course?.title || null,
+          title: title.trim(), event_type:'class',
+          day: d.getDate(), month: d.getMonth()+1, year: d.getFullYear(),
+          time: startTime||null, teacher_name: teacher?.full_name||null,
         }))
       )
     }
-
-    const stu = students.find(s=>s.id===keepStudent)
-    setResult({
-      studentName:  stu?.full_name,
-      othersCleaned: preview.breakdownOthers.length,
-      totalDeleted:  preview.totalToDelete,
-      regenerated:   inserted?.length || 0,
-      kept:          (preview.keepPast?.length || 0) + (preview.keepFuture?.length || 0),
-    })
-    setBusy(false)
-    setStep(4)
+    setRegenDone(inserted?.length || 0)
+    setRegenBusy(false)
+    setShowRegen(false)
+    await loadStudentClasses(selStudent)
   }
 
-  const keptStudent = students.find(s=>s.id===keepStudent)
+  const student    = students.find(s=>s.id===selStudent)
+  const futureCount  = studentCls.filter(c=>c.class_date>=today).length
+  const pastCount    = studentCls.filter(c=>c.class_date<today).length
+
   const inp = { width:'100%', background:'#1a2535', border:'0.5px solid rgba(255,255,255,0.1)', borderRadius:'10px', padding:'10px 13px', fontSize:'13px', color:'rgba(255,255,255,0.85)', outline:'none', fontFamily:'inherit', colorScheme:'dark', boxSizing:'border-box' }
   const lbl = { display:'block', fontSize:'10px', fontWeight:700, color:'rgba(255,255,255,0.3)', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:'5px', marginTop:'12px' }
 
   return (
     <div style={{ marginTop:'14px' }}>
-      <div style={{ fontSize:'16px', fontWeight:700, color:'rgba(255,255,255,0.85)', marginBottom:'4px' }}>🔄 Batch Reset & Regenerate</div>
+      <div style={{ fontSize:'16px', fontWeight:700, color:'rgba(255,255,255,0.85)', marginBottom:'4px' }}>🔄 Class Manager — Cancel &amp; Regenerate</div>
       <div style={{ fontSize:'12px', color:'rgba(255,255,255,0.3)', marginBottom:'16px' }}>
-        Clear future classes for all other students · Keep attended classes intact · Regenerate fresh classes for one student only · No emails sent
+        Pick a student → select which classes to cancel → optionally regenerate new ones. One student at a time. No emails sent.
       </div>
 
-      {/* Step bar */}
-      <div style={{ display:'flex', gap:'4px', marginBottom:'24px', alignItems:'center' }}>
-        {[
-          { n:1, label:'Choose Student to Keep' },
-          { n:2, label:'Preview Impact'          },
-          { n:3, label:'Regenerate Classes'      },
-          { n:4, label:'Done'                    },
-        ].map((s,i) => (
-          <React.Fragment key={s.n}>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
-              <div style={{ width:'28px', height:'28px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:800, background:step>=s.n?'#1e90ff':'rgba(255,255,255,0.08)', color:step>=s.n?'#fff':'rgba(255,255,255,0.3)' }}>{s.n}</div>
-              <span style={{ fontSize:'9px', color:step===s.n?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.25)', fontWeight:step===s.n?700:400, whiteSpace:'nowrap' }}>{s.label}</span>
-            </div>
-            {i < 3 && <div style={{ flex:1, height:'1px', background:step>s.n?'#1e90ff':'rgba(255,255,255,0.08)', marginBottom:'14px' }}/>}
-          </React.Fragment>
-        ))}
-      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'300px 1fr', gap:'16px' }}>
 
-      {/* ── STEP 1 ── */}
-      {step === 1 && (
-        <div style={{ background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.07)', borderRadius:'14px', padding:'20px' }}>
-          <div style={{ padding:'12px', background:'rgba(239,68,68,0.08)', border:'0.5px solid rgba(239,68,68,0.2)', borderRadius:'10px', fontSize:'12px', color:'#f87171', marginBottom:'16px', lineHeight:1.6 }}>
-            ⚠ <strong>What this does:</strong><br/>
-            1. Deletes all future &amp; unattended classes for ALL other students<br/>
-            2. Keeps attended classes for everyone intact<br/>
-            3. Generates fresh new classes for the student you pick below only<br/>
-            4. No emails sent at any step
-          </div>
-
-          <label style={lbl}>Which student should KEEP &amp; get new classes? *</label>
-          <select style={{ ...inp, colorScheme:'dark' }} value={keepStudent} onChange={e=>setKeepStudent(e.target.value)}>
-            <option value="">— Select the student to keep —</option>
-            {students.map(s=><option key={s.id} value={s.id}>{s.full_name} ({s.email})</option>)}
+        {/* ── LEFT: Student picker ── */}
+        <div style={{ background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.07)', borderRadius:'14px', padding:'16px', height:'fit-content' }}>
+          <label style={{ ...lbl, marginTop:0 }}>Select Student</label>
+          <select style={{ ...inp, colorScheme:'dark' }} value={selStudent} onChange={e=>loadStudentClasses(e.target.value)}>
+            <option value="">— Choose student —</option>
+            {students.map(s=><option key={s.id} value={s.id}>{s.full_name}</option>)}
           </select>
 
-          {keepStudent && (
-            <>
-              <div style={{ marginTop:'12px', padding:'12px', background:'rgba(16,185,129,0.08)', borderRadius:'10px', border:'0.5px solid rgba(16,185,129,0.2)' }}>
-                <div style={{ fontSize:'11px', color:'#34d399', fontWeight:700, marginBottom:'4px' }}>✓ WILL KEEP &amp; REGENERATE FOR:</div>
-                <div style={{ fontSize:'13px', color:'#fff', fontWeight:600 }}>{keptStudent?.full_name}</div>
-                <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.4)' }}>{keptStudent?.email}</div>
-              </div>
-              <div style={{ marginTop:'8px', padding:'12px', background:'rgba(239,68,68,0.08)', borderRadius:'10px', border:'0.5px solid rgba(239,68,68,0.2)' }}>
-                <div style={{ fontSize:'11px', color:'#f87171', fontWeight:700, marginBottom:'4px' }}>🗑 FUTURE CLASSES WILL BE CLEARED FOR:</div>
-                {students.filter(s=>s.id!==keepStudent).map(s=>(
-                  <div key={s.id} style={{ fontSize:'12px', color:'rgba(255,255,255,0.5)', padding:'2px 0' }}>· {s.full_name}</div>
-                ))}
-              </div>
-            </>
-          )}
-
-          <button onClick={loadPreview} disabled={!keepStudent||loadingPrev}
-            style={{ marginTop:'16px', width:'100%', padding:'12px', background:!keepStudent?'rgba(100,100,100,0.3)':'linear-gradient(135deg,#1e90ff,#0ea5e9)', color:'#fff', fontSize:'14px', fontWeight:800, border:'none', borderRadius:'10px', cursor:keepStudent?'pointer':'not-allowed', fontFamily:'inherit' }}>
-            {loadingPrev ? '⏳ Analysing classes...' : 'Preview Impact →'}
-          </button>
-        </div>
-      )}
-
-      {/* ── STEP 2 ── */}
-      {step === 2 && preview && (
-        <div style={{ background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.07)', borderRadius:'14px', padding:'20px' }}>
-          <div style={{ fontSize:'14px', fontWeight:700, color:'#fff', marginBottom:'14px' }}>Impact Preview</div>
-
-          {/* Summary boxes */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'10px', marginBottom:'16px' }}>
-            {[
-              { label:'Students affected', value: preview.breakdownOthers.length, color:'#f87171', icon:'👥' },
-              { label:'Classes to delete', value: preview.totalToDelete,          color:'#f87171', icon:'🗑' },
-              { label:`${keptStudent?.full_name?.split(' ')[0]}'s classes kept`, value: (preview.keepPast?.length||0)+(preview.keepFuture?.length||0), color:'#34d399', icon:'✓' },
-            ].map(s=>(
-              <div key={s.label} style={{ background:'rgba(255,255,255,0.04)', borderRadius:'12px', padding:'14px', textAlign:'center' }}>
-                <div style={{ fontSize:'24px', marginBottom:'4px' }}>{s.icon}</div>
-                <div style={{ fontSize:'22px', fontWeight:800, color:s.color }}>{s.value}</div>
-                <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.3)', marginTop:'2px' }}>{s.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Breakdown per student */}
-          {preview.breakdownOthers.length > 0 && (
-            <div style={{ marginBottom:'14px' }}>
-              <div style={{ fontSize:'11px', fontWeight:700, color:'#f87171', marginBottom:'8px' }}>CLASSES TO DELETE PER STUDENT:</div>
-              <div style={{ display:'grid', gap:'6px', maxHeight:'200px', overflowY:'auto' }}>
-                {preview.breakdownOthers.map(({ student, toDelete }) => (
-                  <div key={student.id} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'8px 12px', background:'rgba(239,68,68,0.06)', borderRadius:'9px', border:'0.5px solid rgba(239,68,68,0.15)' }}>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontSize:'12px', fontWeight:600, color:'rgba(255,255,255,0.7)' }}>{student.full_name}</div>
-                      <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.3)' }}>{student.email}</div>
-                    </div>
-                    <span style={{ fontSize:'12px', fontWeight:800, color:'#f87171' }}>{toDelete.length} classes</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {preview.breakdownOthers.length === 0 && (
-            <div style={{ padding:'12px', background:'rgba(16,185,129,0.08)', borderRadius:'10px', fontSize:'12px', color:'#34d399', marginBottom:'14px' }}>
-              ✓ No future classes to delete for other students — proceed to regenerate.
-            </div>
-          )}
-
-          <div style={{ display:'flex', gap:'8px' }}>
-            <button onClick={()=>setStep(1)} style={{ padding:'11px 18px', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.5)', border:'none', borderRadius:'10px', cursor:'pointer', fontFamily:'inherit', fontSize:'13px' }}>← Back</button>
-            <button onClick={deleteOthersFutureClasses} disabled={busy}
-              style={{ flex:1, padding:'11px', background:busy?'rgba(100,100,100,0.3)':'linear-gradient(135deg,#ef4444,#dc2626)', color:'#fff', fontSize:'13px', fontWeight:800, border:'none', borderRadius:'10px', cursor:busy?'not-allowed':'pointer', fontFamily:'inherit' }}>
-              {busy ? '⏳ Deleting...' : `🗑 Delete ${preview.totalToDelete} future classes → Proceed to Regenerate`}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── STEP 3 ── */}
-      {step === 3 && (
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px' }}>
-          <div style={{ background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.07)', borderRadius:'14px', padding:'20px' }}>
-            <div style={{ fontSize:'13px', fontWeight:700, color:'rgba(255,255,255,0.7)', marginBottom:'6px' }}>
-              New classes for: <span style={{ color:'#5aabff' }}>{keptStudent?.full_name}</span>
-            </div>
-            <div style={{ padding:'8px 12px', background:'rgba(244,163,53,0.08)', borderRadius:'8px', fontSize:'11px', color:'#f4a335', marginBottom:'14px', border:'0.5px solid rgba(244,163,53,0.2)' }}>
-              ⚡ No email sent — classes appear on dashboard only
-            </div>
-
-            <label style={lbl}>Class Title *</label>
-            <input style={inp} type="text" placeholder="e.g. Guitar — Private Batch" value={title} onChange={e=>setTitle(e.target.value)} />
-
-            <label style={lbl}>Assign Teacher</label>
-            <select style={{ ...inp, colorScheme:'dark' }} value={selTeacher} onChange={e=>setSelTeacher(e.target.value)}>
-              <option value="">— Select teacher —</option>
-              {teachers.map(t=><option key={t.id} value={t.id}>{t.full_name}</option>)}
-            </select>
-
-            <label style={lbl}>Course (optional)</label>
-            <select style={{ ...inp, colorScheme:'dark' }} value={selCourse} onChange={e=>setSelCourse(e.target.value)}>
-              <option value="">— Link to course —</option>
-              {courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}
-            </select>
-
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
-              <div>
-                <label style={lbl}>Start Date *</label>
-                <input style={inp} type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} min={new Date().toISOString().slice(0,10)} />
-              </div>
-              <div>
-                <label style={lbl}>Time</label>
-                <input style={inp} type="time" value={startTime} onChange={e=>setStartTime(e.target.value)} />
-              </div>
-            </div>
-
-            <label style={lbl}>Total Classes</label>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'6px', marginBottom:'8px' }}>
-              {[12,24,36,48,60,72,84,96].map(n=>(
-                <button key={n} type="button" onClick={()=>setTotalClasses(n)} style={{ padding:'7px', borderRadius:'8px', border:'none', cursor:'pointer', fontSize:'12px', fontWeight:700, background:totalClasses===n?'#1e90ff':'rgba(255,255,255,0.05)', color:totalClasses===n?'#fff':'rgba(255,255,255,0.4)', fontFamily:'inherit' }}>{n}</button>
-              ))}
-            </div>
-            <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'10px' }}>
-              <input type="number" min="1" max="365" value={totalClasses} onChange={e=>setTotalClasses(parseInt(e.target.value)||1)}
-                style={{ ...inp, width:'80px', padding:'8px 10px', fontSize:'13px' }} />
-              <span style={{ fontSize:'12px', color:'rgba(255,255,255,0.3)' }}>custom</span>
-            </div>
-
-            <label style={lbl}>Repeat every week on</label>
-            <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'6px' }}>
-              {DAY_NAMES.map((d,i)=>(
-                <button key={i} type="button" onClick={()=>toggleDay(i)} style={{ width:'38px', height:'38px', borderRadius:'50%', border:'none', cursor:'pointer', fontSize:'11px', fontWeight:700, background:weekDays.includes(i)?'#1e90ff':'rgba(255,255,255,0.07)', color:weekDays.includes(i)?'#fff':'rgba(255,255,255,0.4)', fontFamily:'inherit' }}>{d}</button>
-              ))}
-            </div>
-
-            {err && <div style={{ marginTop:'8px', padding:'8px 12px', background:'rgba(239,68,68,0.1)', color:'#f87171', borderRadius:'8px', fontSize:'12px' }}>{err}</div>}
-
-            <button onClick={regenerateClasses} disabled={busy}
-              style={{ marginTop:'14px', width:'100%', padding:'12px', background:busy?'rgba(100,100,100,0.3)':'linear-gradient(135deg,#10b981,#059669)', color:'#fff', fontSize:'14px', fontWeight:800, border:'none', borderRadius:'10px', cursor:busy?'not-allowed':'pointer', fontFamily:'inherit' }}>
-              {busy ? '⏳ Creating...' : `✓ Generate ${genPreview.length} Classes (No Email)`}
-            </button>
-          </div>
-
-          {/* Preview panel */}
-          <div style={{ background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.07)', borderRadius:'14px', padding:'20px' }}>
-            <div style={{ fontSize:'13px', fontWeight:700, color:'rgba(255,255,255,0.6)', marginBottom:'12px' }}>
-              📋 {genPreview.length} New Classes
-            </div>
-            {genPreview.length === 0 ? (
-              <div style={{ textAlign:'center', padding:'3rem 1rem', color:'rgba(255,255,255,0.2)', fontSize:'12px' }}>Select start date and days to preview</div>
-            ) : (
-              <>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'12px' }}>
+          {student && (
+            <div style={{ marginTop:'12px', padding:'12px', background:'rgba(30,144,255,0.08)', borderRadius:'10px', border:'0.5px solid rgba(30,144,255,0.2)' }}>
+              <div style={{ fontSize:'13px', fontWeight:700, color:'#fff' }}>{student.full_name}</div>
+              <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.4)', marginTop:'2px' }}>{student.email}</div>
+              {!loadingCls && studentCls.length > 0 && (
+                <div style={{ marginTop:'8px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px' }}>
                   {[
-                    { label:'Classes', value:genPreview.length, color:'#5aabff' },
-                    { label:'Weeks',   value:Math.ceil(genPreview.length/weekDays.length), color:'#a78bfa' },
+                    { label:'Future', value:futureCount, color:'#5aabff' },
+                    { label:'Past',   value:pastCount,   color:'#94a3b8' },
                   ].map(s=>(
-                    <div key={s.label} style={{ background:'rgba(255,255,255,0.04)', borderRadius:'10px', padding:'10px', textAlign:'center' }}>
-                      <div style={{ fontSize:'20px', fontWeight:800, color:s.color }}>{s.value}</div>
-                      <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.3)', marginTop:'2px' }}>{s.label}</div>
+                    <div key={s.label} style={{ textAlign:'center', padding:'6px', background:'rgba(255,255,255,0.05)', borderRadius:'8px' }}>
+                      <div style={{ fontSize:'18px', fontWeight:800, color:s.color }}>{s.value}</div>
+                      <div style={{ fontSize:'9px', color:'rgba(255,255,255,0.3)' }}>{s.label}</div>
                     </div>
                   ))}
                 </div>
-                {startDate && <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.35)', marginBottom:'10px' }}>
-                  {genPreview[0]?.toLocaleDateString('en-IN')} → {genPreview[genPreview.length-1]?.toLocaleDateString('en-IN')}
-                  <div style={{ color:'rgba(255,255,255,0.25)', marginTop:'2px' }}>Every {weekDays.map(d=>DAY_NAMES[d]).join(' & ')}{startTime && ` at ${startTime}`}</div>
-                </div>}
-                <div style={{ maxHeight:'340px', overflowY:'auto', display:'grid', gap:'3px' }}>
-                  {genPreview.map((d,i)=>(
-                    <div key={i} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'5px 8px', background:'rgba(255,255,255,0.03)', borderRadius:'6px' }}>
-                      <span style={{ fontSize:'9px', fontWeight:700, padding:'1px 6px', borderRadius:'4px', background:'rgba(16,185,129,0.15)', color:'#34d399', flexShrink:0 }}>#{i+1}</span>
-                      <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.6)' }}>{d.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</span>
-                      {startTime && <span style={{ fontSize:'10px', color:'rgba(255,255,255,0.3)', marginLeft:'auto' }}>{startTime}</span>}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+              )}
+            </div>
+          )}
 
-      {/* ── STEP 4: Done ── */}
-      {step === 4 && result && (
-        <div style={{ textAlign:'center', padding:'2.5rem', background:'rgba(16,185,129,0.06)', border:'0.5px solid rgba(16,185,129,0.2)', borderRadius:'16px' }}>
-          <div style={{ fontSize:'52px', marginBottom:'14px' }}>✅</div>
-          <div style={{ fontSize:'18px', fontWeight:800, color:'#34d399', marginBottom:'8px' }}>All Done!</div>
-          <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.4)', marginBottom:'20px' }}>
-            Other students cleared · <strong style={{ color:'#5aabff' }}>{result.studentName}</strong> set up fresh
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'10px', marginBottom:'24px' }}>
-            {[
-              { label:'Students cleared',     value:result.othersCleaned, color:'#f87171' },
-              { label:'Classes deleted',       value:result.totalDeleted,  color:'#f87171' },
-              { label:'Classes kept (past)',   value:result.kept,          color:'#34d399' },
-              { label:'New classes created',   value:result.regenerated,   color:'#5aabff' },
-            ].map(s=>(
-              <div key={s.label} style={{ background:'rgba(255,255,255,0.04)', borderRadius:'12px', padding:'14px' }}>
-                <div style={{ fontSize:'26px', fontWeight:800, color:s.color }}>{s.value}</div>
-                <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'4px' }}>{s.label}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize:'12px', color:'rgba(255,255,255,0.35)', marginBottom:'16px' }}>
-            ⚡ No emails were sent — new classes visible on {result.studentName}'s dashboard immediately.
-          </div>
-          <button onClick={()=>{ setStep(1); setKeepStudent(''); setPreview(null); setResult(null); setTitle(''); setStartDate(''); setStartTime(''); setGenPreview([]) }}
-            style={{ padding:'11px 28px', background:'linear-gradient(135deg,#1e90ff,#0ea5e9)', color:'#fff', fontSize:'13px', fontWeight:700, border:'none', borderRadius:'10px', cursor:'pointer', fontFamily:'inherit' }}>
-            Run Again
-          </button>
+          {/* Success messages */}
+          {cancelDone > 0 && (
+            <div style={{ marginTop:'10px', padding:'8px 12px', background:'rgba(239,68,68,0.1)', border:'0.5px solid rgba(239,68,68,0.2)', borderRadius:'8px', fontSize:'12px', color:'#f87171' }}>
+              🚫 {cancelDone} classes cancelled
+            </div>
+          )}
+          {regenDone > 0 && (
+            <div style={{ marginTop:'6px', padding:'8px 12px', background:'rgba(16,185,129,0.1)', border:'0.5px solid rgba(16,185,129,0.2)', borderRadius:'8px', fontSize:'12px', color:'#34d399' }}>
+              ✓ {regenDone} new classes created
+            </div>
+          )}
         </div>
-      )}
+
+        {/* ── RIGHT: Class list + actions ── */}
+        <div>
+          {!selStudent && (
+            <div style={{ textAlign:'center', padding:'4rem', background:'rgba(255,255,255,0.03)', borderRadius:'14px', border:'0.5px solid rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.2)', fontSize:'13px' }}>
+              ← Select a student to manage their classes
+            </div>
+          )}
+
+          {selStudent && loadingCls && (
+            <div style={{ textAlign:'center', padding:'4rem', color:'rgba(255,255,255,0.2)', fontSize:'13px' }}>Loading classes...</div>
+          )}
+
+          {selStudent && !loadingCls && studentCls.length === 0 && (
+            <div style={{ textAlign:'center', padding:'3rem', background:'rgba(255,255,255,0.03)', borderRadius:'14px', border:'0.5px solid rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.25)', fontSize:'13px' }}>
+              No active classes for this student.
+              <div style={{ marginTop:'12px' }}>
+                <button onClick={()=>setShowRegen(r=>!r)} style={{ fontSize:'12px', fontWeight:700, padding:'8px 18px', borderRadius:'9px', background:'linear-gradient(135deg,#10b981,#059669)', color:'#fff', border:'none', cursor:'pointer', fontFamily:'inherit' }}>
+                  + Generate New Classes
+                </button>
+              </div>
+            </div>
+          )}
+
+          {selStudent && !loadingCls && studentCls.length > 0 && (
+            <div style={{ background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.07)', borderRadius:'14px', padding:'16px' }}>
+
+              {/* Quick select row */}
+              <div style={{ display:'flex', gap:'6px', marginBottom:'12px', flexWrap:'wrap', alignItems:'center' }}>
+                <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.4)', marginRight:'4px' }}>Select:</span>
+                {[
+                  { label:'All',              fn: selectAll        },
+                  { label:'Future only',       fn: selectFuture     },
+                  { label:'Past only',         fn: selectPast       },
+                  { label:'Future unattended', fn: selectUnattended },
+                  { label:'None',              fn: selectNone       },
+                ].map(b=>(
+                  <button key={b.label} onClick={b.fn} style={{ fontSize:'11px', fontWeight:600, padding:'4px 10px', borderRadius:'7px', border:'none', cursor:'pointer', fontFamily:'inherit', background:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.6)' }}>
+                    {b.label}
+                  </button>
+                ))}
+                <span style={{ marginLeft:'auto', fontSize:'11px', color:'rgba(255,255,255,0.4)' }}>
+                  {selected.size} of {studentCls.length} selected
+                </span>
+              </div>
+
+              {/* Class list */}
+              <div style={{ maxHeight:'380px', overflowY:'auto', display:'grid', gap:'4px', marginBottom:'12px' }}>
+                {studentCls.map(cls => {
+                  const isFuture  = cls.class_date >= today
+                  const isChecked = selected.has(cls.id)
+                  return (
+                    <div key={cls.id} onClick={()=>toggleOne(cls.id)}
+                      style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 12px', borderRadius:'9px', cursor:'pointer', border:`1px solid ${isChecked?'rgba(239,68,68,0.4)':'rgba(255,255,255,0.06)'}`, background:isChecked?'rgba(239,68,68,0.08)':'rgba(255,255,255,0.02)', transition:'all 0.15s' }}>
+                      {/* Checkbox */}
+                      <div style={{ width:'16px', height:'16px', borderRadius:'4px', border:`2px solid ${isChecked?'#ef4444':'rgba(255,255,255,0.2)'}`, background:isChecked?'#ef4444':'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'all 0.15s' }}>
+                        {isChecked && <span style={{ color:'#fff', fontSize:'10px', fontWeight:800 }}>✓</span>}
+                      </div>
+                      {/* Info */}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:'12px', fontWeight:600, color:'rgba(255,255,255,0.8)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{cls.title}</div>
+                        <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.35)', marginTop:'1px' }}>
+                          {fmtDate(cls.class_date)}
+                          {cls.start_time && ` · ${cls.start_time}`}
+                          {cls.teacher_name && ` · ${cls.teacher_name}`}
+                        </div>
+                      </div>
+                      {/* Future/Past badge */}
+                      <span style={{ fontSize:'9px', fontWeight:700, padding:'2px 7px', borderRadius:'5px', flexShrink:0, background:isFuture?'rgba(30,144,255,0.12)':'rgba(255,255,255,0.05)', color:isFuture?'#5aabff':'rgba(255,255,255,0.3)' }}>
+                        {isFuture ? 'Future' : 'Past'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {err && <div style={{ padding:'8px 12px', background:'rgba(239,68,68,0.1)', color:'#f87171', borderRadius:'8px', fontSize:'12px', marginBottom:'10px' }}>{err}</div>}
+
+              {/* Action buttons */}
+              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+                <button onClick={cancelSelected} disabled={cancelBusy || !selected.size}
+                  style={{ flex:1, padding:'11px', background:!selected.size?'rgba(100,100,100,0.2)':'linear-gradient(135deg,#ef4444,#dc2626)', color:'#fff', fontSize:'13px', fontWeight:800, border:'none', borderRadius:'10px', cursor:selected.size?'pointer':'not-allowed', fontFamily:'inherit', opacity:selected.size?1:0.5 }}>
+                  {cancelBusy ? '⏳ Cancelling...' : `🚫 Cancel ${selected.size} Selected Class${selected.size!==1?'es':''}`}
+                </button>
+                <button onClick={()=>{ setShowRegen(r=>!r); setErr('') }} style={{ padding:'11px 18px', background:'rgba(16,185,129,0.12)', color:'#34d399', border:'0.5px solid rgba(16,185,129,0.25)', borderRadius:'10px', cursor:'pointer', fontFamily:'inherit', fontSize:'13px', fontWeight:700 }}>
+                  {showRegen ? '▲ Hide Regen' : '+ Regenerate'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Regenerate Panel ── */}
+          {selStudent && showRegen && (
+            <div style={{ marginTop:'12px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
+              {/* Form */}
+              <div style={{ background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(16,185,129,0.2)', borderRadius:'14px', padding:'16px' }}>
+                <div style={{ fontSize:'13px', fontWeight:700, color:'#34d399', marginBottom:'12px' }}>+ Generate New Classes</div>
+                <div style={{ fontSize:'11px', color:'#f4a335', padding:'7px 10px', background:'rgba(244,163,53,0.08)', borderRadius:'8px', marginBottom:'10px' }}>
+                  ⚡ No email sent — appears on dashboard only
+                </div>
+
+                <label style={{ ...lbl, marginTop:0 }}>Class Title *</label>
+                <input style={inp} type="text" placeholder="e.g. Guitar Private" value={title} onChange={e=>setTitle(e.target.value)} />
+
+                <label style={lbl}>Teacher</label>
+                <select style={{ ...inp, colorScheme:'dark' }} value={selTeacher} onChange={e=>setSelTeacher(e.target.value)}>
+                  <option value="">— Select teacher —</option>
+                  {teachers.map(t=><option key={t.id} value={t.id}>{t.full_name}</option>)}
+                </select>
+
+                <label style={lbl}>Course (optional)</label>
+                <select style={{ ...inp, colorScheme:'dark' }} value={selCourse} onChange={e=>setSelCourse(e.target.value)}>
+                  <option value="">— Link to course —</option>
+                  {courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}
+                </select>
+
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
+                  <div>
+                    <label style={lbl}>Start Date *</label>
+                    <input style={inp} type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} min={today} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Time</label>
+                    <input style={inp} type="time" value={startTime} onChange={e=>setStartTime(e.target.value)} />
+                  </div>
+                </div>
+
+                <label style={lbl}>Total Classes</label>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'5px', marginBottom:'8px' }}>
+                  {[12,24,36,48,60,72,84,96].map(n=>(
+                    <button key={n} type="button" onClick={()=>setTotalClasses(n)}
+                      style={{ padding:'6px', borderRadius:'7px', border:'none', cursor:'pointer', fontSize:'11px', fontWeight:700, background:totalClasses===n?'#1e90ff':'rgba(255,255,255,0.05)', color:totalClasses===n?'#fff':'rgba(255,255,255,0.4)', fontFamily:'inherit' }}>{n}</button>
+                  ))}
+                </div>
+                <input type="number" min="1" max="365" value={totalClasses} onChange={e=>setTotalClasses(parseInt(e.target.value)||1)}
+                  style={{ ...inp, width:'70px', padding:'7px 10px', fontSize:'12px' }} />
+
+                <label style={lbl}>Repeat on</label>
+                <div style={{ display:'flex', gap:'5px', flexWrap:'wrap', marginBottom:'6px' }}>
+                  {DAY_NAMES.map((d,i)=>(
+                    <button key={i} type="button" onClick={()=>toggleDay(i)}
+                      style={{ width:'36px', height:'36px', borderRadius:'50%', border:'none', cursor:'pointer', fontSize:'11px', fontWeight:700, background:weekDays.includes(i)?'#1e90ff':'rgba(255,255,255,0.07)', color:weekDays.includes(i)?'#fff':'rgba(255,255,255,0.4)', fontFamily:'inherit' }}>{d}</button>
+                  ))}
+                </div>
+
+                {err && <div style={{ padding:'7px 10px', background:'rgba(239,68,68,0.1)', color:'#f87171', borderRadius:'8px', fontSize:'12px', marginBottom:'8px' }}>{err}</div>}
+
+                <button onClick={regenerate} disabled={regenBusy}
+                  style={{ marginTop:'10px', width:'100%', padding:'11px', background:regenBusy?'rgba(100,100,100,0.3)':'linear-gradient(135deg,#10b981,#059669)', color:'#fff', fontSize:'13px', fontWeight:800, border:'none', borderRadius:'10px', cursor:'pointer', fontFamily:'inherit' }}>
+                  {regenBusy ? '⏳ Creating...' : `✓ Generate ${genPreview.length} Classes`}
+                </button>
+              </div>
+
+              {/* Preview */}
+              <div style={{ background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.07)', borderRadius:'14px', padding:'16px' }}>
+                <div style={{ fontSize:'12px', fontWeight:700, color:'rgba(255,255,255,0.5)', marginBottom:'10px' }}>📋 {genPreview.length} Classes Preview</div>
+                {genPreview.length === 0
+                  ? <div style={{ textAlign:'center', padding:'3rem 1rem', color:'rgba(255,255,255,0.2)', fontSize:'12px' }}>Set start date and days</div>
+                  : <>
+                      <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.35)', marginBottom:'8px' }}>
+                        {genPreview[0]?.toLocaleDateString('en-IN')} → {genPreview[genPreview.length-1]?.toLocaleDateString('en-IN')}
+                        <div style={{ color:'rgba(255,255,255,0.25)', marginTop:'2px' }}>Every {weekDays.map(d=>DAY_NAMES[d]).join(' & ')}{startTime && ` at ${startTime}`}</div>
+                      </div>
+                      <div style={{ maxHeight:'320px', overflowY:'auto', display:'grid', gap:'3px' }}>
+                        {genPreview.map((d,i)=>(
+                          <div key={i} style={{ display:'flex', gap:'8px', padding:'5px 8px', background:'rgba(255,255,255,0.03)', borderRadius:'6px', alignItems:'center' }}>
+                            <span style={{ fontSize:'9px', fontWeight:700, padding:'1px 6px', borderRadius:'4px', background:'rgba(16,185,129,0.15)', color:'#34d399', flexShrink:0 }}>#{i+1}</span>
+                            <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.6)' }}>{d.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</span>
+                            {startTime && <span style={{ fontSize:'10px', color:'rgba(255,255,255,0.3)', marginLeft:'auto' }}>{startTime}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                }
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
