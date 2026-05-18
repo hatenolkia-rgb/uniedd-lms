@@ -14,21 +14,53 @@ export default function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // 1. Get existing session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       if (session) fetchProfile(session.user.id)
       else setLoading(false)
     })
 
+    // 2. Listen for auth changes (login, logout, registration confirm)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setSession(session)
-        if (session) fetchProfile(session.user.id)
-        else { setProfile(null); setLoading(false) }
+        if (session) {
+          // On SIGNED_IN or TOKEN_REFRESHED — fetch/create profile
+          fetchProfile(session.user.id)
+        } else {
+          setProfile(null)
+          setLoading(false)
+        }
       }
     )
+
     return () => subscription.unsubscribe()
   }, [])
+
+  // 3. Realtime: re-fetch profile if it changes in DB (e.g. admin updates role)
+  useEffect(() => {
+    if (!session?.user?.id) return
+
+    const channel = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${session.user.id}`,
+        },
+        (payload) => {
+          // Profile updated in DB — update local state without refresh
+          if (payload.new) setProfile(payload.new)
+        }
+      )
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
+  }, [session?.user?.id])
 
   async function fetchProfile(userId) {
     setLoading(true)
@@ -54,22 +86,21 @@ export default function App() {
         .select()
         .single()
       data = res.data
-      // New user — send welcome email
       if (data?.email) {
         sendEmail('welcome', data.email, { name: data.full_name || 'there' })
       }
     }
-    // Update timezone on every login (user may travel or it may have changed)
+
     if (data) {
       const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'
       if (data.timezone !== userTimezone) {
         supabase.from('profiles').update({ timezone: userTimezone }).eq('id', data.id).then(() => {})
       }
+      setProfile(data)
+      initActivityLogger(data)
     }
-    setProfile(data)
+
     setLoading(false)
-    // Start activity tracking
-    if (data) initActivityLogger(data)
   }
 
   if (loading) return (
