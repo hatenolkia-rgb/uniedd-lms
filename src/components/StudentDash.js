@@ -6,6 +6,7 @@ import Attendance from './Attendance'
 import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Empty, ZoomBtn } from './Layout'
 import ZoomRecordings from './ZoomRecordings'
 import RescheduleManager from './RescheduleManager'
+import SupportChat from './SupportChat'
 
 function isZoomVisible(classDate, startTime) {
   if (!classDate) return false
@@ -17,66 +18,82 @@ function isZoomVisible(classDate, startTime) {
 }
 
 export default function StudentDash({ profile }) {
-  const [classes,     setClasses]     = useState([])   // only enrolled classes
+  const [classes,     setClasses]     = useState([])
   const [enrollments, setEnrollments] = useState([])
-  const [payments,    setPayments]    = useState([])   // only own payments
-  const [courses,     setCourses]     = useState([])   // only enrolled courses
+  const [payments,    setPayments]    = useState([])
+  const [courses,     setCourses]     = useState([])
   const [loading,     setLoading]     = useState(true)
   const [tab,         setTab]         = useState('overview')
+  const [notifications, setNotifications] = useState([])
 
   useEffect(() => {
     async function load() {
       setLoading(true)
 
-      // Step 1 — get enrollments for this student
       const { data: enr } = await supabase
-        .from('enrollments')
-        .select('*')
-        .eq('student_id', profile.id)
+        .from('enrollments').select('*').eq('student_id', profile.id)
 
       const enrolledClassIds  = (enr || []).map(e => e.class_id).filter(Boolean)
       const enrolledCourseIds = (enr || []).map(e => e.course_id).filter(Boolean)
 
-      // Step 2 — fetch only enrolled classes
       let cls = []
       if (enrolledClassIds.length > 0) {
         const { data } = await supabase
-          .from('classes')
-          .select('*')
-          .in('id', enrolledClassIds)
+          .from('classes').select('*').in('id', enrolledClassIds)
           .order('class_date', { ascending: true })
         cls = data || []
       }
 
-      // Step 3 — fetch only own payments (matched by student_id)
       const { data: pay } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('student_id', profile.id)
+        .from('payments').select('*').eq('student_id', profile.id)
         .order('created_at', { ascending: false })
 
-      // Step 4 — fetch only enrolled courses
       let crss = []
       if (enrolledCourseIds.length > 0) {
-        const { data } = await supabase
-          .from('courses')
-          .select('*')
-          .in('id', enrolledCourseIds)
+        const { data } = await supabase.from('courses').select('*').in('id', enrolledCourseIds)
         crss = data || []
       }
+
+      // Load notifications for this student
+      const { data: notifs } = await supabase
+        .from('notifications').select('*')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false })
+        .limit(20)
 
       setEnrollments(enr || [])
       setClasses(cls)
       setPayments(pay || [])
       setCourses(crss)
+      setNotifications(notifs || [])
       setLoading(false)
     }
     load()
   }, [profile.id])
 
+  // Realtime notifications
+  useEffect(() => {
+    const channel = supabase
+      .channel('student-notifs')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'notifications',
+        filter: `user_id=eq.${profile.id}`,
+      }, (payload) => {
+        setNotifications(prev => [payload.new, ...prev])
+      })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [profile.id])
+
+  async function markNotifRead(id) {
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+  }
+
   const today    = new Date().toISOString().slice(0,10)
   const upcoming = classes.filter(c => c.class_date >= today)
   const past     = classes.filter(c => c.class_date <  today)
+  const unreadCount = notifications.filter(n => !n.is_read).length
 
   const totalDue   = payments.filter(p => p.status !== 'paid').reduce((a,p) => a+(p.amount||0), 0)
   const totalPaid  = payments.filter(p => p.status === 'paid').reduce((a,p) => a+(p.amount||0), 0)
@@ -86,13 +103,19 @@ export default function StudentDash({ profile }) {
   const statusBg    = { paid:'rgba(16,185,129,0.12)', pending:'rgba(232,124,30,0.12)', overdue:'rgba(239,68,68,0.12)' }
 
   const TABS = [
-    { id:'overview',    label:'📋 Overview'  },
-    { id:'classes',     label:'📹 My Classes' },
-    { id:'courses',     label:'🎓 My Courses' },
-    { id:'payments',    label:'💳 Payments'   },
-    { id:'attendance',  label:'✅ Attendance' },
+    { id:'overview',    label:'📋 Overview'   },
+    { id:'classes',     label:'📹 My Classes'  },
+    { id:'courses',     label:'🎓 My Courses'  },
+    { id:'payments',    label:'💳 Payments'    },
+    { id:'attendance',  label:'✅ Attendance'  },
+    { id:'support',     label: unreadCount > 0 ? `🎫 Support (${unreadCount})` : '🎫 Support' },
   ]
-  const tabStyle = k => ({ padding:'8px 16px', fontSize:'13px', fontWeight:600, borderRadius:'10px', border:'none', cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s', background:tab===k?'#1e90ff':'rgba(255,255,255,0.06)', color:tab===k?'#fff':'rgba(255,255,255,0.45)' })
+  const tabStyle = k => ({
+    padding:'8px 16px', fontSize:'13px', fontWeight:600, borderRadius:'10px',
+    border:'none', cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s',
+    background: tab===k ? '#1e90ff' : 'rgba(255,255,255,0.06)',
+    color: tab===k ? '#fff' : k === 'support' && unreadCount > 0 ? '#f4a335' : 'rgba(255,255,255,0.45)',
+  })
 
   return (
     <Layout profile={profile} pageTitle="My Learning">
@@ -109,7 +132,7 @@ export default function StudentDash({ profile }) {
           ? <div style={{ background:'rgba(232,124,30,0.1)', border:'1px solid rgba(232,124,30,0.3)', borderRadius:'14px', padding:'14px', cursor:'pointer' }} onClick={() => setTab('payments')}>
               <div style={{ fontSize:'18px', marginBottom:'8px' }}>💳</div>
               <div style={{ fontSize:'10px', fontWeight:700, color:'#f4a335', letterSpacing:'0.1em', textTransform:'uppercase' }}>Fee Due</div>
-              <div style={{ fontSize:'22px', fontWeight:800, color:'#f4a335', marginTop:'3px' }}>${totalDue.toFixed(2)} USD</div>
+              <div style={{ fontSize:'22px', fontWeight:800, color:'#f4a335', marginTop:'3px' }}>₹{totalDue.toLocaleString('en-IN')}</div>
             </div>
           : <MetricCard icon="💳" label="Fees Paid" value={`₹${totalPaid.toLocaleString('en-IN')}`} />
         }
@@ -133,9 +156,12 @@ export default function StudentDash({ profile }) {
              ) :
              upcoming.map(c => (
                <div key={c.id} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 0', borderBottom:'0.5px solid rgba(255,255,255,0.05)' }}>
-                 <div style={{ fontSize:'20px' }}>📹</div>
+                 <div style={{ fontSize:'20px' }}>{c.is_emergency ? '🚨' : '📹'}</div>
                  <div style={{ flex:1 }}>
-                   <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.85)', fontWeight:500 }}>{c.title}</div>
+                   <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.85)', fontWeight:500 }}>
+                     {c.is_emergency && <span style={{ fontSize:'10px', color:'#f87171', fontWeight:700, marginRight:'4px' }}>EMERGENCY</span>}
+                     {c.title}
+                   </div>
                    <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.3)' }}>
                      {c.class_date} {c.start_time && `· ${c.start_time}`}
                      {c.teacher_name && ` · 👨‍🏫 ${c.teacher_name}`}
@@ -146,33 +172,28 @@ export default function StudentDash({ profile }) {
              ))}
           </Panel>
 
-          <Panel title="Notifications">
-            <div style={{ display:'flex', gap:'10px', padding:'9px 0', borderBottom:'0.5px solid rgba(255,255,255,0.05)' }}>
-              <div style={{ fontSize:'18px' }}>📧</div>
-              <div>
-                <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.8)', fontWeight:500 }}>Welcome to UniEDD!</div>
-                <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.3)', marginTop:'2px' }}>Your learning journey starts here.</div>
+          {/* Notifications panel */}
+          <Panel title={`Notifications ${unreadCount > 0 ? `(${unreadCount} new)` : ''}`}>
+            {notifications.length === 0 ? (
+              <div style={{ textAlign:'center', padding:'2rem 1rem' }}>
+                <div style={{ fontSize:'28px', marginBottom:'8px' }}>🔔</div>
+                <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.3)' }}>No notifications yet.</div>
               </div>
-            </div>
-            {hasPending && (
-              <div style={{ display:'flex', gap:'10px', padding:'9px 0', borderBottom:'0.5px solid rgba(255,255,255,0.05)' }}>
-                <div style={{ fontSize:'18px' }}>⚠️</div>
-                <div>
-                  <div style={{ fontSize:'13px', color:'#f4a335', fontWeight:500 }}>Fee payment pending</div>
-                  <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.3)', marginTop:'2px' }}>
-                    ${totalDue.toFixed(2)} USD outstanding —{' '}
-                    <span style={{ color:'#5aabff', cursor:'pointer' }} onClick={() => setTab('payments')}>view details</span>
-                  </div>
-                </div>
-              </div>
-            )}
-            {upcoming.filter(c => c.meet_link).slice(0,3).map(c => (
-              <div key={c.id} style={{ display:'flex', gap:'10px', padding:'9px 0', borderBottom:'0.5px solid rgba(255,255,255,0.05)' }}>
-                <div style={{ fontSize:'18px' }}>🔗</div>
-                <div>
-                  <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.8)', fontWeight:500 }}>Zoom: {c.title}</div>
-                  <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.3)', marginTop:'2px' }}>{c.class_date} {c.start_time && `· ${c.start_time}`}</div>
-                </div>
+            ) : notifications.slice(0, 8).map(n => (
+              <div key={n.id}
+                onClick={() => !n.is_read && markNotifRead(n.id)}
+                style={{
+                  padding:'10px 12px', borderRadius:'10px', marginBottom:'6px', cursor: n.is_read ? 'default' : 'pointer',
+                  background: n.is_read ? 'rgba(255,255,255,0.02)' : 'rgba(30,144,255,0.08)',
+                  border: `0.5px solid ${n.is_read ? 'rgba(255,255,255,0.05)' : 'rgba(30,144,255,0.2)'}`,
+                  transition:'all 0.15s',
+                }}
+              >
+                <div style={{ fontSize:'12px', fontWeight:600, color: n.is_read ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.85)', marginBottom:'2px' }}>{n.title}</div>
+                <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.3)', lineHeight:1.4 }}>{n.message}</div>
+                {!n.is_read && (
+                  <div style={{ fontSize:'9px', color:'#1e90ff', marginTop:'4px', fontWeight:700 }}>TAP TO MARK READ</div>
+                )}
               </div>
             ))}
           </Panel>
@@ -191,14 +212,18 @@ export default function StudentDash({ profile }) {
             </div>
           ) : (
             <>
-              {/* Upcoming */}
               {upcoming.length > 0 && (
                 <Panel title={`Upcoming (${upcoming.length})`} style={{ marginBottom:'14px' }}>
                   {upcoming.map(c => (
                     <div key={c.id} style={{ display:'flex', alignItems:'center', gap:'12px', padding:'10px 0', borderBottom:'0.5px solid rgba(255,255,255,0.05)' }}>
-                      <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'rgba(30,144,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', flexShrink:0 }}>📹</div>
+                      <div style={{ width:'36px', height:'36px', borderRadius:'10px', background: c.is_emergency ? 'rgba(239,68,68,0.15)' : 'rgba(30,144,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', flexShrink:0 }}>
+                        {c.is_emergency ? '🚨' : '📹'}
+                      </div>
                       <div style={{ flex:1 }}>
-                        <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.85)', fontWeight:600 }}>{c.title}</div>
+                        <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.85)', fontWeight:600 }}>
+                          {c.is_emergency && <span style={{ fontSize:'10px', color:'#f87171', marginRight:'5px', fontWeight:700 }}>EMERGENCY</span>}
+                          {c.title}
+                        </div>
                         <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.35)', marginTop:'2px' }}>
                           {c.class_date} {c.start_time && `· ${c.start_time}`}
                           {c.batch && ` · ${c.batch}`}
@@ -210,7 +235,6 @@ export default function StudentDash({ profile }) {
                   ))}
                 </Panel>
               )}
-              {/* Past */}
               {past.length > 0 && (
                 <Panel title={`Completed (${past.length})`}>
                   {past.map(c => (
@@ -271,8 +295,8 @@ export default function StudentDash({ profile }) {
              ) : (
                <div style={{ display:'grid', gap:'8px' }}>
                  <div style={{ display:'flex', gap:'10px', marginBottom:'6px', flexWrap:'wrap' }}>
-                   <div style={{ padding:'6px 14px', borderRadius:'20px', background:'rgba(16,185,129,0.1)', fontSize:'12px', fontWeight:700, color:'#10b981' }}>Paid: ${totalPaid.toFixed(2)} USD</div>
-                   {totalDue > 0 && <div style={{ padding:'6px 14px', borderRadius:'20px', background:'rgba(232,124,30,0.1)', fontSize:'12px', fontWeight:700, color:'#f4a335' }}>Due: ${totalDue.toFixed(2)} USD</div>}
+                   <div style={{ padding:'6px 14px', borderRadius:'20px', background:'rgba(16,185,129,0.1)', fontSize:'12px', fontWeight:700, color:'#10b981' }}>Paid: ₹{totalPaid.toLocaleString('en-IN')}</div>
+                   {totalDue > 0 && <div style={{ padding:'6px 14px', borderRadius:'20px', background:'rgba(232,124,30,0.1)', fontSize:'12px', fontWeight:700, color:'#f4a335' }}>Due: ₹{totalDue.toLocaleString('en-IN')}</div>}
                  </div>
                  {payments.map(p => (
                    <div key={p.id} style={{ padding:'12px 14px', background:'rgba(255,255,255,0.03)', borderRadius:'10px', borderLeft:`3px solid ${statusColor[p.status]||'#888'}` }}>
@@ -288,7 +312,7 @@ export default function StudentDash({ profile }) {
                        </div>
                        <div style={{ textAlign:'right', flexShrink:0 }}>
                          <div style={{ fontSize:'16px', fontWeight:800, color:statusColor[p.status]||'#fff' }}>
-                           {`${p.currency === 'USD' ? '$' : p.currency === 'GBP' ? '£' : p.currency === 'EUR' ? '€' : '$'}${(p.amount||0).toFixed(2)} ${p.currency||'USD'}`}
+                           {`${p.currency === 'INR' ? '₹' : p.currency === 'USD' ? '$' : p.currency === 'GBP' ? '£' : '₹'}${(p.amount||0).toLocaleString('en-IN')}`}
                          </div>
                          <span style={{ fontSize:'9px', fontWeight:700, padding:'2px 8px', borderRadius:'10px', background:statusBg[p.status]||'rgba(255,255,255,0.05)', color:statusColor[p.status]||'#aaa', textTransform:'uppercase' }}>{p.status}</span>
                        </div>
@@ -312,6 +336,14 @@ export default function StudentDash({ profile }) {
         <>
           <PageHeader title="My Attendance" subtitle="Your class attendance history." />
           <Attendance profile={profile} />
+        </>
+      )}
+
+      {/* ── SUPPORT ── */}
+      {tab === 'support' && (
+        <>
+          <PageHeader title="Support" subtitle="Raise a ticket or chat with admin for help." />
+          <SupportChat profile={profile} />
         </>
       )}
 
