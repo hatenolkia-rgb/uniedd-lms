@@ -17,6 +17,7 @@ import Layout, { PageHeader, Grid4, MetricCard, Panel, TwoCol, Row, Pill, Empty,
 import { sendEmail } from '../emailService'
 import RescheduleManager from './RescheduleManager'
 import ScheduleDemo, { ScheduleDemoModal } from './ScheduleDemo'
+import LeadsDashboard from './LeadsDashboard'
 
 const SOURCE_COLOR = {
   'Google Ads':    { bg:'rgba(66,133,244,0.15)',  c:'#4285f4' },
@@ -201,26 +202,7 @@ export default function AdminDash({ profile }) {
       {/* ── ALL LEADS ── */}
       {activeSection === 'leads' && (
         <>
-          <PageHeader title={`All Leads (${stats.leads})`} subtitle="Every lead from all sources." />
-          <Panel>
-            {loading ? <Empty msg="Loading..." /> : leads.length === 0 ? <Empty msg="No leads yet. Share your /book link to get started!" /> :
-              leads.map(l => (
-                <div key={l.id} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 0', borderBottom:'0.5px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ width:'30px', height:'30px', borderRadius:'50%', flexShrink:0, background:'rgba(139,92,246,0.2)', color:'#a78bfa', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', fontWeight:800 }}>
-                    {(l.full_name||'?').charAt(0).toUpperCase()}
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.85)', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{l.full_name}</div>
-                    <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.3)', marginTop:'1px' }}>{l.phone} {l.email && `· ${l.email}`} {l.course_interest && `· ${l.course_interest}`}</div>
-                    {l.notes && <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.2)', marginTop:'1px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{l.notes.split('\n')[0]}</div>}
-                  </div>
-                  <SourceBadge source={l.source} />
-                  <select value={l.status||'New'} onChange={e => updateLeadStatus(l.id, e.target.value)} style={sel}>
-                    {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-              ))}
-          </Panel>
+          <LeadsDashboard profile={profile} />
         </>
       )}
 
